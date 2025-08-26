@@ -95,8 +95,6 @@ class JetstreamIngester {
       const did = event.did || commit.repo;
       const uri = `at://${did}/xyz.statusphere.status/${commit.rkey}`;
 
-      console.log(`📝 New status: ${record.status} from ${did.slice(-8)}...`);
-
       await db.insertStatus({
         uri,
         did,
@@ -104,7 +102,7 @@ class JetstreamIngester {
         created_at: record.createdAt,
       });
 
-      console.log(`✅ Stored status: ${record.status}`);
+      console.log(`✅ Stored status: ${record.status} from ${did.slice(-8)}...`);
     } catch (error) {
       console.error("❌ Failed to process status record:", error);
     }
