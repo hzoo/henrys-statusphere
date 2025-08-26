@@ -1,6 +1,61 @@
 # Henry Statusphere
 
-Minimal AT Protocol app - share emoji statuses.
+> Based off https://atproto.com/guides/applications and statusphere.xyz
+
+*Note: This is just me documenting my own learning/understanding of atproto/lexicons + making a somewhat minimalistic app (jetstream, sqlite, client side oauth)
+
+## Notes
+
+*"everyone has their own database"*
+
+- There's no singular database - you always post to your own database only
+- Apps are indexers that selectively listen to whatever lexicons they want
+- If Bluesky (the app) dies, your data survives on your server. If the status app dies, your statuses still exist in the PDS.
+- Someone could create a wildly popular lexicon through a completely different app/UI
+- Your app could index Bluesky posts + status updates + any other records, or focus on just one type
+- Innovation can happen at the data layer (new lexicons) independent of the app layer
+
+Example: You post `xyz.statusphere.status` → Statusphere (the app) shows it. Bluesky (the app) ignores it. If you post `app.bsky.feed.post` → Bluesky shows it. Same firehose, different indexing.
+
+## Records
+
+```
+at://alice.bsky.social/xyz.statusphere.status/3jzfcijpj2z2a
+    └─ user's domain   └─ record type      └─ rkey (record key)
+```
+
+The domain can be your own website (`henryzoo.com`) or use Bluesky's (`alice.bsky.social`). 
+
+While Bluesky hosts the default PDS/relay infrastructure, others are creating their own and self-hosting.
+
+The **rkey** is usually timestamp-based (auto-generated) but can be fixed like `"self"` for profiles.
+
+```typescript
+// Statusphere record
+{ $type: 'xyz.statusphere.status', status: '😊', createdAt: '...' }
+
+// Bluesky post record  
+{ $type: 'app.bsky.feed.post', text: 'yo', createdAt: '...' }
+```
+
+## Building Apps
+
+The AT Protocol pattern:
+
+1. **Design schema** - Define record types (like `xyz.statusphere.status`)
+2. **Create database** - For aggregating records into views (SQLite)
+3. **Write records** - Build app to post to users' repos
+4. **Listen to firehose** - Aggregate data across the network
+
+```typescript
+// Post to your database
+await rpc.post("com.atproto.repo.createRecord", {
+  input: { repo: did, collection: "xyz.statusphere.status", record }
+})
+
+// Listen to everyone's database
+new JetstreamSubscription({ wantedCollections: ["xyz.statusphere.status"] })
+```
 
 ## Quick Start
 
@@ -10,69 +65,8 @@ bun run dev
 # Visit http://127.0.0.1:3001
 ```
 
-## How It Works
-
-1. **You post** → Your status goes to AT Protocol (your personal data server)
-2. **Jetstream listens** → Captures all status posts from the network  
-3. **Timeline shows** → Aggregated statuses from everyone
-
-## Project Structure
-
-- `src/index.ts` - Web server & API
-- `src/lib/oauth.ts` - Bluesky authentication  
-- `src/jetstream.ts` - Real-time network listener (with inline types)
-- `src/pages/app.ts` - Client-side UI
-- `src/db.ts` - SQLite storage
-
-## Core Concepts
-
-### Status Record Schema
-
-Simple inline type definition for status records:
-
-```typescript
-interface StatusRecord {
-  $type: 'xyz.statusphere.status';
-  status: string;      // Single emoji/character  
-  createdAt: string;   // ISO datetime string
-}
-```
-
-### Posting to AT Protocol
-
-```typescript
-rpc.post("com.atproto.repo.createRecord", {
-  input: {
-    repo: did,
-    collection: "xyz.statusphere.status", 
-    record: statusRecord
-  }
-})
-```
-
-### Listening to Network
-
-```typescript
-const subscription = new JetstreamSubscription({
-  wantedCollections: ["xyz.statusphere.status"]
-});
-```
-
-## Testing
-
-You can view your status records directly on the AT Protocol network using ATP Tools:
-
-```
-https://atp.tools/at:/alice.bsky.social/xyz.statusphere.status
-```
-
-## Extending
-
-1. Modify the `StatusRecord` interface in `src/jetstream.ts`
-2. Add new fields to your status records and update validation
-
 ## Learn More
 
 - [AT Protocol Docs](https://atproto.com)
-- [Bluesky API](https://docs.bsky.app)
-- [ATP Tools](https://atp.tools) - Explore AT Protocol records
+- [ATP Tools](https://atp.tools) - Explore records
+- [Ethos](https://atproto.com/articles/atproto-ethos) and [for Distributed Systems Engineers](https://atproto.com/articles/atproto-for-distsys-engineers)
