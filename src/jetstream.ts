@@ -1,11 +1,11 @@
 import { JetstreamSubscription } from "@atcute/jetstream";
-import { is } from "@atcute/lexicons";
 import { db } from "./db";
 
+// Inline type definition for xyz.statusphere.status records
 interface StatusRecord {
-  $type: string;
-  status: string;
-  createdAt: string;
+  $type: 'xyz.statusphere.status';
+  status: string;      // Single emoji/character (maxLength: 32, maxGraphemes: 1)
+  createdAt: string;   // ISO datetime string
 }
 
 function isStatusRecord(obj: unknown): obj is StatusRecord {

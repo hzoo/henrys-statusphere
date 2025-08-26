@@ -20,21 +20,21 @@ bun run dev
 
 - `src/index.ts` - Web server & API
 - `src/lib/oauth.ts` - Bluesky authentication  
-- `src/jetstream.ts` - Real-time network listener
+- `src/jetstream.ts` - Real-time network listener (with inline types)
 - `src/pages/app.ts` - Client-side UI
-- `lexicons/xyz.statusphere.status.json` - Status record schema
 - `src/db.ts` - SQLite storage
 
 ## Core Concepts
 
-### Custom Lexicon (Schema)
+### Status Record Schema
 
-Defines the structure of a status record:
+Simple inline type definition for status records:
 
-```json
-{
-  "status": "😊",
-  "createdAt": "2024..."
+```typescript
+interface StatusRecord {
+  $type: 'xyz.statusphere.status';
+  status: string;      // Single emoji/character  
+  createdAt: string;   // ISO datetime string
 }
 ```
 
@@ -68,9 +68,8 @@ https://atp.tools/at:/alice.bsky.social/xyz.statusphere.status
 
 ## Extending
 
-1. Modify `lexicons/xyz.statusphere.status.json`
-2. Run `bun run generate` to update TypeScript types
-3. Add new fields to your status records
+1. Modify the `StatusRecord` interface in `src/jetstream.ts`
+2. Add new fields to your status records and update validation
 
 ## Learn More
 

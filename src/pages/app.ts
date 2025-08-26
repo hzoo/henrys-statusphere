@@ -5,7 +5,7 @@ import {
   startLoginProcess, 
   logout, 
   getCurrentSession,
-} from "../lib/oauth.ts";
+} from "./oauth.ts";
 
 // DOM Elements
 const loggedOutView = document.getElementById('logged-out-view') as HTMLElement;

@@ -58,23 +58,7 @@ class StatusDB {
     return query.all(limit) as StatusRecord[];
   }
 
-  async getStatusByDid(did: string, limit = 10): Promise<StatusRecord[]> {
-    const query = this.db.query(`
-      SELECT uri, did, status, created_at, indexed_at
-      FROM statuses
-      WHERE did = ?1
-      ORDER BY indexed_at DESC
-      LIMIT ?2
-    `);
 
-    return query.all(did, limit) as StatusRecord[];
-  }
-
-  async getStatusCount(): Promise<number> {
-    const query = this.db.query(`SELECT COUNT(*) as count FROM statuses`);
-    const result = query.get() as { count: number };
-    return result.count;
-  }
 
   close() {
     this.db.close();
@@ -87,6 +71,4 @@ export const db = new StatusDB();
 // Initialize database when this module is imported
 if (import.meta.main) {
   console.log("🗄️  Database initialized at ./statusphere.db");
-  const count = await db.getStatusCount();
-  console.log(`📊 Current status count: ${count}`);
 }
