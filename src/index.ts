@@ -1,5 +1,6 @@
 import { serve } from "bun";
 import appPage from "./pages/app.html";
+import profilePage from "./pages/profile.html";
 import oauthMetadata from "../public/oauth-client-metadata.json";
 import { db } from "./db";
 import { ingester } from "./jetstream";
@@ -12,6 +13,7 @@ const server = serve({
   routes: {
     "/": appPage,
     "/callback": appPage,
+    "/profile/*": profilePage,
     "/oauth-client-metadata.json": () => Response.json(oauthMetadata),
     
     "/api/statuses": {

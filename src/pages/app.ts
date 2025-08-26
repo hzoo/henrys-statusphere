@@ -15,6 +15,7 @@ const statusForm = document.getElementById('status-form') as HTMLFormElement;
 const statusInput = document.getElementById('status-input') as HTMLInputElement;
 const statusBtns = document.querySelectorAll('.status-btn') as NodeListOf<HTMLButtonElement>;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
+const profileLink = document.getElementById('profile-link') as HTMLAnchorElement;
 const timeline = document.getElementById('status-timeline') as HTMLElement;
 const loading = document.getElementById('loading') as HTMLElement;
 const noStatuses = document.getElementById('no-statuses') as HTMLElement;
@@ -120,6 +121,8 @@ function showLoggedInView(): void {
   
   const displayName = currentSession.displayName || currentSession.handle.split('.')[0];
   userInfo.innerHTML = `Hi, <strong>${displayName}</strong>. What's your status today?`;
+  
+  profileLink.href = `/profile/${currentSession.handle}`;
   
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const isWindows = navigator.platform.toUpperCase().indexOf('WIN') >= 0;

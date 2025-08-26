@@ -53,7 +53,6 @@ class JetstreamIngester {
     }
 
     this.isRunning = true;
-    console.log("🚀 Starting Jetstream ingester...");
     console.log("📡 Listening for xyz.statusphere.status records");
 
     try {
@@ -63,11 +62,12 @@ class JetstreamIngester {
         if (event.kind === "commit") {
           const commit = event.commit;
 
-          if (
-            commit.collection === "xyz.statusphere.status" &&
-            commit.operation === "create"
-          ) {
-            await this.handleStatusRecord(event);
+          if (commit.collection === "xyz.statusphere.status") {
+            if (commit.operation === "create" || commit.operation === "update") {
+              await this.handleStatusRecord(event);
+            } else if (commit.operation === "delete") {
+              await this.handleStatusDelete(event);
+            }
           }
         }
       }
@@ -107,6 +107,21 @@ class JetstreamIngester {
       console.log(`✅ Stored status: ${record.status}`);
     } catch (error) {
       console.error("❌ Failed to process status record:", error);
+    }
+  }
+
+  private async handleStatusDelete(event: any) {
+    try {
+      const commit = event.commit;
+      const did = event.did || commit.repo;
+      const uri = `at://${did}/xyz.statusphere.status/${commit.rkey}`;
+
+      console.log(`🗑️ Deleting status from ${did.slice(-8)}...`);
+
+      await db.deleteStatus(uri);
+      console.log(`✅ Deleted status from database`);
+    } catch (error) {
+      console.error("❌ Failed to delete status:", error);
     }
   }
 

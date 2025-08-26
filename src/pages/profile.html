@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-title">Profile - Statusphere</title>
+  <link rel="stylesheet" href="tailwindcss">
+</head>
+<body class="font-mono bg-white text-black min-h-screen">
+  <div class="max-w-xl mx-auto p-8">
+    <header class="text-center mb-8">
+      <h1 class="text-2xl font-bold mb-2">Statusphere</h1>
+      <p class="text-xs">Set your status on the Atmosphere.</p>
+    </header>
+
+    <nav class="mb-6">
+      <a href="/" class="text-xs underline">← Back to home</a>
+    </nav>
+
+    <main>
+      <div id="profile-section" class="mb-8">
+        <div id="loading-profile" class="text-center">Loading profile...</div>
+        <div id="profile-info" class="hidden">
+          <h2 id="profile-handle" class="text-lg font-bold mb-2"></h2>
+          <p id="profile-description" class="text-sm text-gray-600 mb-4"></p>
+        </div>
+        <div id="profile-error" class="hidden text-center text-red-500">
+          <p>Profile not found</p>
+        </div>
+      </div>
+
+      <div id="status-section">
+        <h3 class="text-sm font-bold mb-4">Status History</h3>
+        <div id="loading-statuses" class="text-center">Loading statuses...</div>
+        <div id="status-list" class="hidden space-y-2"></div>
+        <div id="no-statuses" class="hidden text-center text-gray-500">
+          <p>No status updates yet.</p>
+        </div>
+      </div>
+    </main>
+
+    <footer class="text-center text-xs mt-8 text-gray-400">
+      <a href="https://github.com/hzoo/henry-statusphere" class="underline">code at hzoo/henry-statusphere</a>
+    </footer>
+  </div>
+
+  <script type="module" src="./profile.ts"></script>
+</body>
+</html>

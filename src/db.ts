@@ -60,6 +60,13 @@ class StatusDB {
     `;
   }
 
+  async deleteStatus(uri: string): Promise<void> {
+    await this.initialized;
+    await this.sql`
+      DELETE FROM statuses WHERE uri = ${uri}
+    `;
+  }
+
   async close() {
     await this.sql.close();
   }
