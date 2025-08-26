@@ -92,6 +92,11 @@ class JetstreamIngester {
         return;
       }
 
+      // Minimal validation: must be exactly 1 visual character
+      if ([...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(record.status)].length !== 1) {
+        return; // Skip invalid status
+      }
+
       const did = event.did || commit.repo;
       const uri = `at://${did}/xyz.statusphere.status/${commit.rkey}`;
 

@@ -1,114 +1,109 @@
 # Henry Statusphere
 
-> Based off https://atproto.com/guides/applications and statusphere.xyz
-
-*Note: This is just me documenting my own learning/understanding of atproto/lexicons + making a somewhat minimalistic app (jetstream, sqlite, client side oauth)*
+*Note*: more of documenting some learnings with AT Protocol through building a minimal status app. Based on the [official guide](https://atproto.com/guides/applications) and [statusphere.xyz](https://github.com/bluesky-social/statusphere-example-app/), with a few deps jetstream, bun/sqlite, client-side oauth.
 
 ## Notes
 
-*"everyone has their own database"*
+*everyone has their own database*
 
-- Users post to their own database, there's no central repository
-  - If Bluesky (the app) dies, your post data (`app.bsky.feed.post`) still exist in the repo
-  - If the status app dies, your statuses (`xyz.statusphere.status`) still exist in the repo
-- Apps are selective indexers that choose what to listen for (not all types of data)
-  - Apps can collaborate in that they all choose to use the same lexicons
-  - Your app could index Bluesky posts + status updates + any other records, or focus on just one type
-  - Innovation can happen at the data layer (new lexicons) independent of the app layer
+**Data persistence vs app validation:** Users can write records to their Personal Data Server (PDS), which stores whatever they submit without strict validation. 
 
-### Records
+Apps (a backend) act as selective indexers - they choose which records to consume and can apply their own validation rules.
 
+- Your data persists even when apps shut down or reject your records
+- Different apps can have different standards for the same record type
+- Example: I could post "Hello" (5 graphemes) as a status - it gets stored in my PDS, but my app might reject it while another app accepts it
+- Apps collaborate through shared lexicons but maintain independent validation logic
+
+**The indexing pattern:** Apps don't store the canonical data - they create local indexes of relevant records for fast queries. The real data lives in user repositories.
+
+**Record structure:** AT URIs follow a specific format:
 ```
 at://alice.bsky.social/xyz.statusphere.status/3jzfcijpj2z2a
-    └─ user's domain   └─ record type      └─ rkey (record key)
+    └─ handle/domain   └─ record type      └─ record key
 ```
 
-> the **rkey** is usually timestamp-based (auto-generated) but can be fixed like `"self"` for profiles.
+**Identity layers:** I noticed AT Protocol has multiple identity concepts:
+- `alice.bsky.social` - Human-readable handle (can change)
+- `did:plc:abc123...` - Permanent cryptographic identifier
+- Handles resolve to DIDs, but DIDs are what actually matter for data ownership
 
-### Domain/Identifier
-
-- `alice.bsky.social` - Handle pointing to a DID (decentralized identifier)
-- `henryzoo.com` - Custom domain (if you own it and set up DNS)
-- `did:plc:abc123...` - The actual DID (cryptographic identifier)
-
-> While Bluesky hosts the default PDS/relay infrastructure, you can self-host.
-
+**Record examples from my implementation:**
 ```typescript
-// Statusphere record (this app)
+// My status record
 { $type: 'xyz.statusphere.status', status: '😊', createdAt: '...' }
 
-// Bluesky post record  
-{ $type: 'app.bsky.feed.post', text: 'yo', createdAt: '...' }
+// Standard Bluesky post
+{ $type: 'app.bsky.feed.post', text: 'Hello world', createdAt: '...' }
 ```
 
-## Building an app
+## My implementation approach
 
-### 1. Design your lexicon
-Define record schemas for your use case:
+**1. Define the lexicon**
+I chose a simple schema for status updates:
 ```typescript
-// xyz.statusphere.status lexicon
 {
   $type: 'xyz.statusphere.status',
-  status: string,     // emoji/character (maxLength: 32)  
+  status: string,     // single emoji/character (maxLength: 32)
   createdAt: string   // ISO datetime
 }
 ```
 
-### 2. Create local database
-Apps need fast local queries, so index relevant data:
+**2. Local indexing**
+Since apps need fast queries, I index relevant data locally:
 ```sql
 CREATE TABLE statuses (
-  uri TEXT PRIMARY KEY,           -- at://did/collection/rkey
-  did TEXT NOT NULL,             -- user's identifier  
-  status TEXT NOT NULL,          -- emoji content
-  created_at TEXT NOT NULL,      -- user's timestamp
-  indexed_at TEXT DEFAULT NOW()  -- when we saw it
+  uri TEXT PRIMARY KEY,           -- full AT URI
+  did TEXT NOT NULL,             -- user's permanent identifier
+  status TEXT NOT NULL,          -- the status content
+  created_at TEXT NOT NULL,      -- when user created it
+  indexed_at TEXT DEFAULT NOW()  -- when I saw it
 );
 ```
 
-### 3. Write records to user repos
+**3. Writing records**
+Users post to their own repositories:
 ```typescript
 await rpc.post("com.atproto.repo.createRecord", {
   input: {
-    repo: userDid,                        // their repo
-    collection: "xyz.statusphere.status", // your lexicon
+    repo: userDid,
+    collection: "xyz.statusphere.status",
     record: { $type: "xyz.statusphere.status", status: "😊", createdAt: "..." }
   }
 });
 ```
 
-### 4. Listen to the firehose  
+**4. Consuming the firehose/jetstream**
+I subscribe to all `xyz.statusphere.status` records across the network:
 ```typescript
 new JetstreamSubscription({ 
   wantedCollections: ["xyz.statusphere.status"] 
 });
 ```
 
-## Quick Start
+## Running the app
 
-- [Bun](https://bun.sh) runtime
-- A Bluesky account for testing
+Requirements: [Bun](https://bun.sh) runtime and a Bluesky account for testing.
 
 ```bash
 bun install
 bun run dev
 ```
 
-Visit **http://127.0.0.1:3001** and sign in with your Bluesky account.
+Visit http://127.0.0.1:3001 and sign in with your Bluesky account.
 
-## oauth
+## OAuth implementation notes
 
-> via [`@atcute/oauth-browser-client`](https://github.com/mary-ext/atcute/tree/trunk/packages/oauth/browser-client).
+I used [`@atcute/oauth-browser-client`](https://github.com/mary-ext/atcute/tree/trunk/packages/oauth/browser-client) which provides a minimal OAuth implementation for AT Protocol.
 
-- **Development**: Uses `http://localhost` client_id format for local development
-- **Production**: Serves OAuth metadata from your domain at `/oauth-client-metadata.json`  
+**Development vs production:**
+- Development: Uses `http://localhost` client_id format (special exception in AT Protocol OAuth)
+- Production: Serves OAuth metadata from `/oauth-client-metadata.json` endpoint
 
-**Setup:**
-- Set `BASE_URL` environment variable for your production domain
-- The OAuth flow grants `transition:generic` scope for broad account permissions
+**Configuration:** Set `BASE_URL` environment variable for production deployments. The implementation requests `transition:generic` scope for broad account permissions.
 
-## Learn More
+## References
 
-- [AT Protocol Docs](https://atproto.com)
-- [ATP Tools](https://atp.tools) - Explore records
-- [Ethos](https://atproto.com/articles/atproto-ethos) and [for Distributed Systems Engineers](https://atproto.com/articles/atproto-for-distsys-engineers)
+- [AT Protocol Docs](https://atproto.com) - Official specification
+- [ATP Tools](https://atp.tools) - Explore records in the network
+- [AT Protocol for Distributed Systems Engineers](https://atproto.com/articles/atproto-for-distsys-engineers) - Technical deep dive
