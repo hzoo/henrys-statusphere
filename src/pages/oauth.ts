@@ -86,8 +86,6 @@ export async function handleOAuthCallback(): Promise<SessionState | null> {
       const { ok, data } = await (client as any).get("app.bsky.actor.getProfile", {
         params: { actor: session.info.sub },
       });
-
-      console.log(data);
       
       currentSession = {
         agent,
