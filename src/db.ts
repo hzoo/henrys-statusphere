@@ -38,7 +38,7 @@ class StatusDB {
     `;
 
     this.isInitialized = true;
-    console.log("✅ Database initialized");
+    console.log("Database initialized");
   }
 
   async insertStatus(record: StatusRecord): Promise<void> {
@@ -100,5 +100,5 @@ class StatusDB {
 export const db = new StatusDB();
 
 if (import.meta.main) {
-  console.log("🗄️  Database initialized at ./statusphere.db");
+  console.log("Database initialized at ./statusphere.db");
 }

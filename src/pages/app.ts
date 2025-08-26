@@ -123,15 +123,16 @@ function formatCount(count: number): string {
 
 const fallbackEmojis = ['😊', '🔥', '💯', '👍', '😍', '🤔', '😎', '🙃', '😂', '💙', '🚀', '✨'];
 
-async function fetchProfile(did: string): Promise<Profile | null> {
-  // Check sessionStorage first
-  const cached = sessionStorage.getItem(`profile:${did}`);
+// Shared profile fetching with sessionStorage cache
+async function fetchProfile(actor: string): Promise<Profile | null> {
+  const cacheKey = `profile:${actor}`;
+  const cached = sessionStorage.getItem(cacheKey);
   if (cached) {
     return JSON.parse(cached);
   }
   
   try {
-    const response = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`);
+    const response = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${actor}`);
     if (response.ok) {
       const profile = await response.json() as any;
       const profileData: Profile = {
@@ -140,12 +141,11 @@ async function fetchProfile(did: string): Promise<Profile | null> {
         avatar: profile.avatar,
         did: profile.did,
       };
-      // Cache in sessionStorage (persists across page reloads)
-      sessionStorage.setItem(`profile:${did}`, JSON.stringify(profileData));
+      sessionStorage.setItem(cacheKey, JSON.stringify(profileData));
       return profileData;
     }
   } catch (error) {
-    console.log(`Could not fetch profile for ${did}`);
+    console.log(`Could not fetch profile for ${actor}`);
   }
   return null;
 }

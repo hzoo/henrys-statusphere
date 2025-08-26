@@ -51,20 +51,20 @@ const server = serve({
   }
 });
 
-console.log(`🚀 Statusphere running at ${server.url}`);
+console.log(`Statusphere running at ${server.url}`);
 
-// Start the Jetstream ingester and store them in our local database
+// Start the Jetstream ingester
 ingester.start().catch((error) => {
-  console.error("💥 Failed to start Jetstream ingester:", error);
+  console.error("Failed to start Jetstream ingester:", error);
 });
 
 process.on('SIGINT', () => {
-  console.log('\\nShutting down statusphere...');
+  console.log('\\nShutting down...');
   ingester.stop();
   process.exit(0);
 });
 process.on('SIGTERM', () => {
-  console.log('\\nShutting down statusphere...');
+  console.log('\\nShutting down...');
   ingester.stop();
   process.exit(0);
 });

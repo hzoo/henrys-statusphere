@@ -15,9 +15,6 @@ import { isStatusRecord } from "./types";
 class JetstreamIngester {
   private subscription: JetstreamSubscription;
   private isRunning = false;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
-  private baseDelay = 1000; // 1 second
 
   constructor() {
     this.subscription = new JetstreamSubscription({
@@ -28,12 +25,11 @@ class JetstreamIngester {
 
   async start() {
     if (this.isRunning) {
-      console.log("⚠️ Jetstream ingester already running");
+      console.log("Jetstream ingester already running");
       return;
     }
 
     this.isRunning = true;
-    this.resetReconnectionState(); // Reset reconnection counter on successful start
     console.log("📡 Listening for xyz.statusphere.status records");
 
     try {
@@ -53,30 +49,11 @@ class JetstreamIngester {
         }
       }
     } catch (error) {
-      console.error("💥 Jetstream connection error:", error);
+      console.error("Jetstream connection error:", error);
       this.isRunning = false;
-      await this.handleReconnection();
+      // Simple retry after 5 seconds
+      setTimeout(() => this.start(), 5000);
     }
-  }
-
-  private async handleReconnection() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(`❌ Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`);
-      return;
-    }
-
-    this.reconnectAttempts++;
-    const delay = Math.min(this.baseDelay * Math.pow(2, this.reconnectAttempts - 1), 30000); // Max 30 seconds
-    
-    console.log(`🔄 Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms...`);
-    
-    setTimeout(() => {
-      this.start();
-    }, delay);
-  }
-
-  private resetReconnectionState() {
-    this.reconnectAttempts = 0;
   }
 
   private async handleStatusRecord(event: any) {
@@ -84,21 +61,18 @@ class JetstreamIngester {
       const commit = event.commit;
       const record = commit.record;
 
-      if (!isStatusRecord(record)) {
-        console.log("❌ Invalid status record format:", record);
-        return;
-      }
+      if (!isStatusRecord(record)) return;
 
-      // Simple validation: single visible character only
+      // Validate single visible character (handles multi-codepoint emojis correctly)
       const status = record.status.trim();
-      if (!status || status.length === 0 || status.length > 10) { // Allow multi-byte chars like emojis
-        return;
-      }
+      if (!status) return;
       
       // Reject if it looks empty when rendered (catches zero-width chars)
-      if (status.replace(/[\u200B-\u200D\uFEFF]/g, '').length === 0) {
-        return;
-      }
+      if (status.replace(/[\u200B-\u200D\uFEFF]/g, '').length === 0) return;
+      
+      // Count graphemes (visible characters) - allows complex emojis like 👨‍👩‍👧‍👦
+      const graphemeCount = [...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(status)].length;
+      if (graphemeCount !== 1) return;
 
       const did = event.did || commit.repo;
       const uri = `at://${did}/xyz.statusphere.status/${commit.rkey}`;
@@ -106,13 +80,13 @@ class JetstreamIngester {
       await db.insertStatus({
         uri,
         did,
-        status: status, // Use validated status
+        status,
         created_at: record.createdAt,
       });
 
-      console.log(`✅ Stored status: ${record.status} from ${did.slice(-8)}...`);
+      console.log(`✅ Stored status: ${status} from ${did.slice(-8)}...`);
     } catch (error) {
-      console.error("❌ Failed to process status record:", error);
+      console.error("Failed to process status record:", error);
     }
   }
 
@@ -123,25 +97,25 @@ class JetstreamIngester {
       const uri = `at://${did}/xyz.statusphere.status/${commit.rkey}`;
 
       await db.deleteStatus(uri);
-      console.log(`✅ Deleted status from ${did.slice(-8)}...`);
+      console.log(`Deleted status from ${did.slice(-8)}...`);
     } catch (error) {
-      console.error("❌ Failed to delete status:", error);
+      console.error("Failed to delete status:", error);
     }
   }
 
   stop() {
     this.isRunning = false;
-    console.log("⏹️ Stopping Jetstream ingester...");
+    console.log("Stopping Jetstream ingester...");
   }
 }
 
 export const ingester = new JetstreamIngester();
 
 if (import.meta.main) {
-  console.log("🎯 Starting Jetstream ingester in standalone mode...");
+  console.log("Starting Jetstream ingester in standalone mode...");
   
   ingester.start().catch((error) => {
-    console.error("💥 Fatal error:", error);
+    console.error("Fatal error:", error);
     process.exit(1);
   });
 }
