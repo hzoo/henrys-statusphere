@@ -96,6 +96,17 @@ bun run dev
 
 Visit **http://127.0.0.1:3001** and sign in with your Bluesky account.
 
+## oauth
+
+> via [`@atcute/oauth-browser-client`](https://github.com/mary-ext/atcute/tree/trunk/packages/oauth/browser-client).
+
+- **Development**: Uses `http://localhost` client_id format for local development
+- **Production**: Serves OAuth metadata from your domain at `/oauth-client-metadata.json`  
+
+**Setup:**
+- Set `BASE_URL` environment variable for your production domain
+- The OAuth flow grants `transition:generic` scope for broad account permissions
+
 ## Learn More
 
 - [AT Protocol Docs](https://atproto.com)
