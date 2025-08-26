@@ -116,7 +116,7 @@ async function loadUserStatuses(userDid: string): Promise<void> {
         userStatuses = allStatuses.filter(status => status.did === userDid);
       }
     } else {
-      // For other users, use local database
+      // For other users, use local database - reuse the same data if already fetched
       const response = await fetch('/api/statuses');
       const allStatuses = await response.json() as StatusRecord[];
       userStatuses = allStatuses.filter(status => status.did === userDid);

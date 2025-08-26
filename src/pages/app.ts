@@ -56,11 +56,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
   
-  // Load content after authentication state is determined
-  await loadTimeline();
+  // Load content in parallel after authentication state is determined
+  const loadPromises = [loadTimeline()];
   if (isAuthenticated) {
-    await loadPopularEmojis();
+    loadPromises.push(loadPopularEmojis());
   }
+  await Promise.all(loadPromises);
 });
 
 loginBtn.addEventListener('click', async () => {
@@ -121,6 +122,33 @@ function formatCount(count: number): string {
 }
 
 const fallbackEmojis = ['😊', '🔥', '💯', '👍', '😍', '🤔', '😎', '🙃', '😂', '💙', '🚀', '✨'];
+
+async function fetchProfile(did: string): Promise<Profile | null> {
+  // Check sessionStorage first
+  const cached = sessionStorage.getItem(`profile:${did}`);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+  
+  try {
+    const response = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`);
+    if (response.ok) {
+      const profile = await response.json() as any;
+      const profileData: Profile = {
+        handle: profile.handle,
+        displayName: profile.displayName,
+        avatar: profile.avatar,
+        did: profile.did,
+      };
+      // Cache in sessionStorage (persists across page reloads)
+      sessionStorage.setItem(`profile:${did}`, JSON.stringify(profileData));
+      return profileData;
+    }
+  } catch (error) {
+    console.log(`Could not fetch profile for ${did}`);
+  }
+  return null;
+}
 
 function createEmojiButton(emoji: string, count?: number, index?: number): HTMLButtonElement {
   const button = document.createElement('button');
@@ -244,22 +272,18 @@ async function loadTimeline(): Promise<void> {
       const uniqueDids = [...new Set(statuses.map(s => s.did))];
       const profiles = new Map<string, Profile>();
       
-      for (const did of uniqueDids) {
-        try {
-          const response = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`);
-          if (response.ok) {
-            const profile = await response.json() as any;
-            profiles.set(did, {
-              handle: profile.handle,
-              displayName: profile.displayName,
-              avatar: profile.avatar,
-              did: profile.did,
-            });
-          }
-        } catch (error) {
-          console.log(`Could not fetch profile for ${did}`);
+      // Fetch all profiles in parallel
+      const profilePromises = uniqueDids.map(async (did) => {
+        const profile = await fetchProfile(did);
+        return profile ? { did, profile } : null;
+      });
+      
+      const profileResults = await Promise.all(profilePromises);
+      profileResults.forEach(result => {
+        if (result) {
+          profiles.set(result.did, result.profile);
         }
-      }
+      });
       
       timeline.innerHTML = statuses.map(status => {
         const profile = profiles.get(status.did);
