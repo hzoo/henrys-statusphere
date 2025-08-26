@@ -3,21 +3,7 @@ import {
   checkExistingSession,
   getCurrentSession,
 } from "./oauth.ts";
-
-interface Status {
-  uri: string;
-  did: string;
-  status: string;
-  created_at: string;
-  indexed_at: string;
-}
-
-interface Profile {
-  handle: string;
-  displayName?: string;
-  avatar?: string;
-  did: string;
-}
+import type { StatusRecord, Profile } from "../types";
 
 const loadingProfile = document.getElementById('loading-profile') as HTMLElement;
 const profileInfo = document.getElementById('profile-info') as HTMLElement;
@@ -41,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   try {
-    const profile = await fetchProfile(handle);
+    const profile = await fetchProfile(handle as string);
     showProfile(profile);
     await loadUserStatuses(profile.did);
   } catch (error) {
@@ -53,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function getHandleFromUrl(): string | null {
   const path = window.location.pathname;
   const match = path.match(/\/profile\/(.+)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  return match && match[1] ? decodeURIComponent(match[1]) : null;
 }
 
 async function fetchProfile(handle: string): Promise<Profile> {
@@ -92,7 +78,7 @@ function showProfileError(): void {
 async function loadUserStatuses(userDid: string): Promise<void> {
   try {
     const currentSession = getCurrentSession();
-    let userStatuses: Status[] = [];
+    let userStatuses: StatusRecord[] = [];
     
     // If viewing own profile, fetch complete history from PDS
     if (currentSession && currentSession.did === userDid) {
@@ -118,13 +104,13 @@ async function loadUserStatuses(userDid: string): Promise<void> {
         console.warn('Failed to fetch from PDS, falling back to local data:', pdsError);
         // Fall back to local database
         const response = await fetch('/api/statuses');
-        const allStatuses = await response.json() as Status[];
+        const allStatuses = await response.json() as StatusRecord[];
         userStatuses = allStatuses.filter(status => status.did === userDid);
       }
     } else {
       // For other users, use local database
       const response = await fetch('/api/statuses');
-      const allStatuses = await response.json() as Status[];
+      const allStatuses = await response.json() as StatusRecord[];
       userStatuses = allStatuses.filter(status => status.did === userDid);
     }
     
@@ -144,7 +130,7 @@ async function loadUserStatuses(userDid: string): Promise<void> {
   }
 }
 
-function renderStatuses(statuses: Status[], userDid: string): void {
+function renderStatuses(statuses: StatusRecord[], userDid: string): void {
   const currentSession = getCurrentSession();
   const isOwnProfile = currentSession && currentSession.did === userDid;
   

@@ -1,29 +1,18 @@
 import { SQL } from "bun";
 import { resolve } from "path";
-
-/**
- * Represents a status record from the AT Protocol
- * 
- * In AT Protocol, records have URIs like: at://did:plc:abc123/xyz.statusphere.status/3jz...
- */
-export interface StatusRecord {
-  uri: string;
-  did: string;
-  status: string;
-  created_at: string;
-  indexed_at: string;
-}
+import type { StatusRecord } from "./types";
 
 class StatusDB {
   private sql: SQL;
-  private initialized: Promise<void>;
+  private isInitialized = false;
 
   constructor(dbPath = "./statusphere.db") {
     this.sql = new SQL(`sqlite://${resolve(dbPath)}`);
-    this.initialized = this.init();
   }
 
-  private async init() {
+  private async ensureInitialized() {
+    if (this.isInitialized) return;
+
     await this.sql`
       CREATE TABLE IF NOT EXISTS statuses (
         uri TEXT PRIMARY KEY,
@@ -39,11 +28,12 @@ class StatusDB {
       ON statuses(indexed_at DESC)
     `;
 
+    this.isInitialized = true;
     console.log("✅ Database initialized");
   }
 
   async insertStatus(record: Omit<StatusRecord, "indexed_at">): Promise<void> {
-    await this.initialized;
+    await this.ensureInitialized();
     await this.sql`
       INSERT OR REPLACE INTO statuses (uri, did, status, created_at, indexed_at)
       VALUES (${record.uri}, ${record.did}, ${record.status}, ${record.created_at}, CURRENT_TIMESTAMP)
@@ -51,7 +41,7 @@ class StatusDB {
   }
 
   async getRecentStatuses(limit = 20): Promise<StatusRecord[]> {
-    await this.initialized;
+    await this.ensureInitialized();
     return await this.sql`
       SELECT uri, did, status, created_at, indexed_at
       FROM statuses
@@ -61,7 +51,7 @@ class StatusDB {
   }
 
   async deleteStatus(uri: string): Promise<void> {
-    await this.initialized;
+    await this.ensureInitialized();
     await this.sql`
       DELETE FROM statuses WHERE uri = ${uri}
     `;

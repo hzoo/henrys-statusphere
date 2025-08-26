@@ -1,30 +1,7 @@
 import { JetstreamSubscription } from "@atcute/jetstream";
 import { db } from "./db";
-
-/**
- * Type definition for xyz.statusphere.status records
- * 
- * This represents the actual record structure that users post to their AT Protocol repos.
- * The lexicon defines: status as a single emoji/character (maxLength: 32, maxGraphemes: 1)
- */
-interface StatusRecord {
-  $type: 'xyz.statusphere.status';
-  status: string;
-  createdAt: string;
-}
-
-function isStatusRecord(obj: unknown): obj is StatusRecord {
-  return (
-    typeof obj === "object" &&
-    obj !== null &&
-    "$type" in obj &&
-    (obj as any).$type === "xyz.statusphere.status" &&
-    "status" in obj &&
-    "createdAt" in obj &&
-    typeof (obj as any).status === "string" &&
-    typeof (obj as any).createdAt === "string"
-  );
-}
+import type { StatusRecordData } from "./types";
+import { isStatusRecord } from "./types";
 
 /**
  * Jetstream firehose ingester for AT Protocol records
@@ -38,6 +15,9 @@ function isStatusRecord(obj: unknown): obj is StatusRecord {
 class JetstreamIngester {
   private subscription: JetstreamSubscription;
   private isRunning = false;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private baseDelay = 1000; // 1 second
 
   constructor() {
     this.subscription = new JetstreamSubscription({
@@ -53,6 +33,7 @@ class JetstreamIngester {
     }
 
     this.isRunning = true;
+    this.resetReconnectionState(); // Reset reconnection counter on successful start
     console.log("📡 Listening for xyz.statusphere.status records");
 
     try {
@@ -74,12 +55,28 @@ class JetstreamIngester {
     } catch (error) {
       console.error("💥 Jetstream connection error:", error);
       this.isRunning = false;
-      
-      setTimeout(() => {
-        console.log("🔄 Attempting to reconnect...");
-        this.start();
-      }, 5000);
+      await this.handleReconnection();
     }
+  }
+
+  private async handleReconnection() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error(`❌ Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`);
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(this.baseDelay * Math.pow(2, this.reconnectAttempts - 1), 30000); // Max 30 seconds
+    
+    console.log(`🔄 Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms...`);
+    
+    setTimeout(() => {
+      this.start();
+    }, delay);
+  }
+
+  private resetReconnectionState() {
+    this.reconnectAttempts = 0;
   }
 
   private async handleStatusRecord(event: any) {

@@ -6,6 +6,7 @@ import {
   logout, 
   getCurrentSession,
 } from "./oauth.ts";
+import type { StatusRecord, Profile } from "../types";
 
 const loggedOutView = document.getElementById('logged-out-view') as HTMLElement;
 const loggedInView = document.getElementById('logged-in-view') as HTMLElement;
@@ -20,20 +21,6 @@ const timeline = document.getElementById('status-timeline') as HTMLElement;
 const loading = document.getElementById('loading') as HTMLElement;
 const noStatuses = document.getElementById('no-statuses') as HTMLElement;
 const emojiTip = document.getElementById('emoji-tip') as HTMLElement;
-
-interface Status {
-  uri: string;
-  did: string;
-  status: string;
-  created_at: string;
-  indexed_at: string;
-}
-
-interface Profile {
-  handle: string;
-  displayName?: string;
-  avatar?: string;
-}
 
 document.addEventListener('DOMContentLoaded', async () => {
   initializeOAuth();
@@ -145,7 +132,7 @@ function showLoggedOutView(): void {
 async function loadTimeline(): Promise<void> {
   try {
     const response = await fetch('/api/statuses');
-    const statuses = await response.json() as Status[];
+    const statuses = await response.json() as StatusRecord[];
     
     loading.classList.add('hidden');
     
@@ -168,6 +155,7 @@ async function loadTimeline(): Promise<void> {
               handle: profile.handle,
               displayName: profile.displayName,
               avatar: profile.avatar,
+              did: profile.did,
             });
           }
         } catch (error) {

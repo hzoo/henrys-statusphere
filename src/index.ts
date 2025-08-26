@@ -3,29 +3,7 @@ import appPage from "./pages/app.html";
 import profilePage from "./pages/profile.html";
 import { db } from "./db";
 import { ingester } from "./jetstream";
-
-const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:3001";
-
-const oauthMetadata = {
-  "client_id": `${BASE_URL}/oauth-client-metadata.json`,
-  "client_uri": BASE_URL,
-  "redirect_uris": [
-    `${BASE_URL}`,
-    `${BASE_URL}/callback`
-  ],
-  "application_type": "web",
-  "client_name": "Henry's Statusphere",
-  "dpop_bound_access_tokens": true,
-  "grant_types": [
-    "authorization_code",
-    "refresh_token"
-  ],
-  "response_types": [
-    "code"
-  ],
-  "scope": "atproto transition:generic",
-  "token_endpoint_auth_method": "none"
-};
+import { getOAuthMetadata } from "./config";
 
 const server = serve({
   port: process.env.PORT ? parseInt(process.env.PORT) : 3001,
@@ -36,7 +14,7 @@ const server = serve({
     "/": appPage,
     "/callback": appPage,
     "/profile/*": profilePage,
-    "/oauth-client-metadata.json": () => Response.json(oauthMetadata),
+    "/oauth-client-metadata.json": () => Response.json(getOAuthMetadata()),
     
     "/api/statuses": {
       async GET() {
