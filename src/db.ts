@@ -1,6 +1,11 @@
 import { Database } from "bun:sqlite";
 import { resolve } from "path";
 
+/**
+ * Represents a status record from the AT Protocol
+ * 
+ * In AT Protocol, records have URIs like: at://did:plc:abc123/xyz.statusphere.status/3jz...
+ */
 export interface StatusRecord {
   uri: string;
   did: string;
@@ -18,7 +23,6 @@ class StatusDB {
   }
 
   private init() {
-    // Create statuses table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS statuses (
         uri TEXT PRIMARY KEY,
@@ -29,7 +33,6 @@ class StatusDB {
       )
     `);
 
-    // Create index on indexed_at for efficient ordering
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_statuses_indexed_at 
       ON statuses(indexed_at DESC)
@@ -65,10 +68,8 @@ class StatusDB {
   }
 }
 
-// Export a singleton instance
 export const db = new StatusDB();
 
-// Initialize database when this module is imported
 if (import.meta.main) {
   console.log("🗄️  Database initialized at ./statusphere.db");
 }

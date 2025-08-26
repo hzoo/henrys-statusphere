@@ -9,6 +9,17 @@ import {
 } from "@atcute/oauth-browser-client";
 import { Client } from "@atcute/client";
 
+/**
+ * OAuth authentication for AT Protocol / Bluesky
+ * 
+ * This handles the OAuth flow that allows our app to:
+ * - Authenticate users with their Bluesky/AT Protocol identity
+ * - Get permission to read their profile and post records to their repo
+ * - Maintain authenticated sessions across browser reloads
+ * 
+ * The OAuth flow uses PKCE (Proof Key for Code Exchange) for security.
+ */
+
 export interface SessionState {
   agent: OAuthUserAgent;
   rpc: Client;
@@ -34,8 +45,6 @@ export function initializeOAuth(): void {
     isOAuthInitialized = true;
   }
 }
-
-// Check for existing session
 export async function checkExistingSession(): Promise<SessionState | null> {
   const storedDid = localStorage.getItem('statusphere:did');
   if (storedDid) {
@@ -45,8 +54,7 @@ export async function checkExistingSession(): Promise<SessionState | null> {
         const agent = new OAuthUserAgent(session);
         const client = new Client({ handler: agent });
         
-        // Get profile to show handle
-        const { ok, data } = await client.get("app.bsky.actor.getProfile", {
+        const { ok, data } = await (client as any).get("app.bsky.actor.getProfile", {
           params: { actor: session.info.sub },
         });
         
@@ -69,7 +77,10 @@ export async function checkExistingSession(): Promise<SessionState | null> {
   return null;
 }
 
-// Handle OAuth callback
+/**
+ * Handle OAuth callback after user returns from authorization server
+ * Extracts authorization code and exchanges it for access tokens
+ */
 export async function handleOAuthCallback(): Promise<SessionState | null> {
   if (window.location.pathname === '/callback') {
     const params = new URLSearchParams(window.location.search || window.location.hash.slice(1));
@@ -79,8 +90,7 @@ export async function handleOAuthCallback(): Promise<SessionState | null> {
       const agent = new OAuthUserAgent(session);
       const client = new Client({ handler: agent });
       
-      // Get user profile
-      const { ok, data } = await client.get("app.bsky.actor.getProfile", {
+      const { ok, data } = await (client as any).get("app.bsky.actor.getProfile", {
         params: { actor: session.info.sub },
       });
 
@@ -95,6 +105,7 @@ export async function handleOAuthCallback(): Promise<SessionState | null> {
       };
       
       localStorage.setItem('statusphere:did', currentSession.did);
+      
       window.history.replaceState({}, document.title, '/');
       return currentSession;
     } catch (error) {
@@ -106,12 +117,10 @@ export async function handleOAuthCallback(): Promise<SessionState | null> {
   return null;
 }
 
-// Start login process - use Bluesky resolver instead of custom domains
 export async function startLoginProcess(handle: string): Promise<void> {
   try {
     initializeOAuth();
     
-    // Use Bluesky's resolver instead of trying to resolve custom domains
     const { metadata } = await resolveFromService('https://bsky.social');
     const authUrl = await createAuthorizationUrl({
       metadata,
@@ -125,7 +134,6 @@ export async function startLoginProcess(handle: string): Promise<void> {
   }
 }
 
-// Logout
 export async function logout(): Promise<void> {
   if (currentSession) {
     try {
@@ -138,7 +146,6 @@ export async function logout(): Promise<void> {
   }
 }
 
-// Get current session
 export function getCurrentSession(): SessionState | null {
   return currentSession;
 }

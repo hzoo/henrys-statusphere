@@ -1,11 +1,16 @@
 import { JetstreamSubscription } from "@atcute/jetstream";
 import { db } from "./db";
 
-// Inline type definition for xyz.statusphere.status records
+/**
+ * Type definition for xyz.statusphere.status records
+ * 
+ * This represents the actual record structure that users post to their AT Protocol repos.
+ * The lexicon defines: status as a single emoji/character (maxLength: 32, maxGraphemes: 1)
+ */
 interface StatusRecord {
   $type: 'xyz.statusphere.status';
-  status: string;      // Single emoji/character (maxLength: 32, maxGraphemes: 1)
-  createdAt: string;   // ISO datetime string
+  status: string;
+  createdAt: string;
 }
 
 function isStatusRecord(obj: unknown): obj is StatusRecord {
@@ -21,6 +26,15 @@ function isStatusRecord(obj: unknown): obj is StatusRecord {
   );
 }
 
+/**
+ * Jetstream firehose ingester for AT Protocol records
+ * 
+ * Jetstream provides a real-time stream of all commits across the AT Protocol network.
+ * We filter for only "xyz.statusphere.status" records and store them locally.
+ * 
+ * This demonstrates the AT Protocol pattern: apps are selective indexers that
+ * choose which lexicons/record types they care about from the global firehose.
+ */
 class JetstreamIngester {
   private subscription: JetstreamSubscription;
   private isRunning = false;
@@ -61,7 +75,6 @@ class JetstreamIngester {
       console.error("💥 Jetstream connection error:", error);
       this.isRunning = false;
       
-      // Attempt to reconnect after delay
       setTimeout(() => {
         console.log("🔄 Attempting to reconnect...");
         this.start();
@@ -74,19 +87,16 @@ class JetstreamIngester {
       const commit = event.commit;
       const record = commit.record;
 
-      // Validate the record structure
       if (!isStatusRecord(record)) {
         console.log("❌ Invalid status record format:", record);
         return;
       }
 
-      // Extract information
       const did = event.did || commit.repo;
       const uri = `at://${did}/xyz.statusphere.status/${commit.rkey}`;
 
       console.log(`📝 New status: ${record.status} from ${did.slice(-8)}...`);
 
-      // Store in our database
       await db.insertStatus({
         uri,
         did,
@@ -106,14 +116,11 @@ class JetstreamIngester {
   }
 }
 
-// Create and export ingester instance
 export const ingester = new JetstreamIngester();
 
-// Auto-start when module is imported, unless we're just being imported for types
 if (import.meta.main) {
   console.log("🎯 Starting Jetstream ingester in standalone mode...");
   
-  // Start the ingester
   ingester.start().catch((error) => {
     console.error("💥 Fatal error:", error);
     process.exit(1);

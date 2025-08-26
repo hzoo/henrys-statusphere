@@ -7,7 +7,6 @@ import {
   getCurrentSession,
 } from "./oauth.ts";
 
-// DOM Elements
 const loggedOutView = document.getElementById('logged-out-view') as HTMLElement;
 const loggedInView = document.getElementById('logged-in-view') as HTMLElement;
 const userInfo = document.getElementById('user-info') as HTMLElement;
@@ -35,12 +34,10 @@ interface Profile {
   avatar?: string;
 }
 
-// Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
   initializeOAuth();
   await loadTimeline();
   
-  // Handle OAuth callback first
   try {
     const callbackSession = await handleOAuthCallback();
     if (callbackSession) {
@@ -51,23 +48,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     alert('Login failed. Please try again.');
   }
   
-  // Check for existing session
   const existingSession = await checkExistingSession();
   if (existingSession) {
     showLoggedInView();
   }
 });
 
-// Event Listeners
 loginBtn.addEventListener('click', async () => {
   try {
-    await startLoginProcess('bsky.social'); // Default to Bluesky
+    await startLoginProcess('bsky.social');
   } catch (error) {
     alert('Failed to start login. Please try again.');
   }
 });
 
-statusBtns.forEach(btn => {
+statusBtns.forEach((btn: HTMLButtonElement) => {
   btn.addEventListener('click', () => {
     statusInput.value = btn.dataset.status || '';
   });
@@ -81,15 +76,13 @@ statusForm.addEventListener('submit', async (e: Event) => {
   if (!status || !currentSession) return;
   
   try {
-    // Create status record for AT Protocol
     const statusRecord = {
       $type: "xyz.statusphere.status",
       status,
       createdAt: new Date().toISOString(),
     };
     
-    // Post directly to AT Protocol using the RPC client
-    const { ok, data } = await currentSession.rpc.post("com.atproto.repo.createRecord", {
+    const { ok, data } = await (currentSession.rpc as any).post("com.atproto.repo.createRecord", {
       input: {
         repo: currentSession.did,
         collection: "xyz.statusphere.status",
@@ -102,8 +95,7 @@ statusForm.addEventListener('submit', async (e: Event) => {
     }
     
     statusInput.value = '';
-    // Timeline will update automatically via Jetstream ingester
-    setTimeout(() => loadTimeline(), 1000); // Small delay to let Jetstream process
+    setTimeout(() => loadTimeline(), 1000);
     
   } catch (error) {
     console.error('Failed to post status:', error);
@@ -116,7 +108,6 @@ logoutBtn.addEventListener('click', async () => {
   showLoggedOutView();
 });
 
-// UI Functions
 function showLoggedInView(): void {
   const currentSession = getCurrentSession();
   if (!currentSession) return;
@@ -124,11 +115,9 @@ function showLoggedInView(): void {
   loggedOutView.classList.add('hidden');
   loggedInView.classList.remove('hidden');
   
-  // Use displayName if available, otherwise extract first name from handle
   const displayName = currentSession.displayName || currentSession.handle.split('.')[0];
   userInfo.innerHTML = `Hi, <strong>${displayName}</strong>. What's your status today?`;
   
-  // Set OS-specific emoji tip now that the element is visible
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const isWindows = navigator.platform.toUpperCase().indexOf('WIN') >= 0;
   
@@ -149,7 +138,7 @@ function showLoggedOutView(): void {
 async function loadTimeline(): Promise<void> {
   try {
     const response = await fetch('/api/statuses');
-    const statuses: Status[] = await response.json();
+    const statuses = await response.json() as Status[];
     
     loading.classList.add('hidden');
     
@@ -160,7 +149,6 @@ async function loadTimeline(): Promise<void> {
       noStatuses.classList.add('hidden');
       timeline.classList.remove('hidden');
       
-      // Fetch profiles for each unique DID
       const uniqueDids = [...new Set(statuses.map(s => s.did))];
       const profiles = new Map<string, Profile>();
       
@@ -168,7 +156,7 @@ async function loadTimeline(): Promise<void> {
         try {
           const response = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`);
           if (response.ok) {
-            const profile = await response.json();
+            const profile = await response.json() as any;
             profiles.set(did, {
               handle: profile.handle,
               displayName: profile.displayName,
