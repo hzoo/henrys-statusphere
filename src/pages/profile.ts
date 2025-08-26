@@ -5,6 +5,15 @@ import {
 } from "./oauth.ts";
 import type { StatusRecord, Profile } from "../types";
 
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const loadingProfile = document.getElementById('loading-profile') as HTMLElement;
 const profileInfo = document.getElementById('profile-info') as HTMLElement;
 const profileError = document.getElementById('profile-error') as HTMLElement;
@@ -135,15 +144,15 @@ function renderStatuses(statuses: StatusRecord[], userDid: string): void {
   
   statusList.innerHTML = statuses.map(status => {
     const deleteButton = isOwnProfile 
-      ? `<button class="delete-btn text-xs text-red-500 hover:text-red-700 ml-2" data-uri="${status.uri}">×</button>`
+      ? `<button class="delete-btn text-xs text-red-500 hover:text-red-700 ml-2" data-uri="${escapeHtml(status.uri)}">×</button>`
       : '';
     
-    const atpToolsLink = `https://atp.tools/${status.uri}`;
+    const atpToolsLink = `https://atp.tools/${encodeURIComponent(status.uri)}`;
     
     return `
       <div class="flex items-center justify-between text-sm p-2 border border-gray-200 rounded">
         <div class="flex items-center space-x-2">
-          <span class="text-lg">${status.status}</span>
+          <span class="text-lg">${escapeHtml(status.status)}</span>
           <span class="text-xs text-gray-500">
             ${new Date(status.created_at).toLocaleDateString('en-US', { 
               month: 'short', 

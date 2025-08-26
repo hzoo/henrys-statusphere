@@ -22,6 +22,16 @@ const loading = document.getElementById('loading') as HTMLElement;
 const noStatuses = document.getElementById('no-statuses') as HTMLElement;
 const emojiTip = document.getElementById('emoji-tip') as HTMLElement;
 
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
 document.addEventListener('DOMContentLoaded', async () => {
   initializeOAuth();
   await loadTimeline();
@@ -192,7 +202,7 @@ function showLoggedInView(): void {
   loggedOutView.classList.add('hidden');
   loggedInView.classList.remove('hidden');
   
-  const displayName = currentSession.displayName || currentSession.handle.split('.')[0];
+  const displayName = escapeHtml(currentSession.displayName || currentSession.handle.split('.')[0]);
   userInfo.innerHTML = `Hi, <strong>${displayName}</strong>. What's your status today?`;
   
   profileLink.href = `/profile/${currentSession.handle}`;
@@ -251,15 +261,15 @@ async function loadTimeline(): Promise<void> {
       
       timeline.innerHTML = statuses.map(status => {
         const profile = profiles.get(status.did);
-        const handle = profile?.handle || status.did.replace("did:plc:", "").substring(0, 8) + "...";
-        const avatar = profile?.avatar;
+        const handle = escapeHtml(profile?.handle || status.did.replace("did:plc:", "").substring(0, 8) + "...");
+        const avatar = profile?.avatar ? escapeHtml(profile.avatar) : '';
         
         return `
           <div class="flex items-start justify-between text-sm">
             <div class="flex items-center space-x-2">
               ${avatar ? `<img src="${avatar}" alt="" class="w-4 h-4 rounded-full flex-shrink-0" />` : ''}
               <span>
-                <a href="https://bsky.app/profile/${status.did}" target="_blank" class="underline">${handle}</a> is feeling ${status.status} today
+                <a href="https://bsky.app/profile/${escapeHtml(status.did)}" target="_blank" class="underline">${handle}</a> is feeling ${escapeHtml(status.status)} today
               </span>
             </div>
             <span class="text-xs text-gray-500 ml-2 flex-shrink-0">
