@@ -1,0 +1,24 @@
+{
+  "name": "henry-statusphere",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Minimal AT Protocol status app using xyz.statusphere.status lexicon",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "generate": "bun run scripts/generate.ts",
+    "db:init": "bun run src/db.ts"
+  },
+  "dependencies": {
+    "@atcute/client": "^4.0.3",
+    "@atcute/jetstream": "^1.0.2",
+    "@atcute/lexicons": "^1.1.0",
+    "@atcute/oauth-browser-client": "^1.0.26",
+    "bun-plugin-tailwind": "^0.0.15",
+    "tailwindcss": "^4.1.12"
+  },
+  "devDependencies": {
+    "@atcute/lex-cli": "^2.2.0",
+    "@types/bun": "^1.2.19"
+  }
+}

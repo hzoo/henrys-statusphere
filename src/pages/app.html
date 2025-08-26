@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Statusphere</title>
+  <link rel="stylesheet" href="tailwindcss">
+</head>
+<body class="font-mono bg-white text-black min-h-screen">
+  <div class="max-w-xl mx-auto p-8">
+    <header class="text-center mb-8">
+      <h1 class="text-2xl font-bold mb-2">Statusphere</h1>
+      <p class="text-xs">Set your status on the Atmosphere.</p>
+    </header>
+
+    <main>
+      <div id="auth-section" class="mb-8">
+        <div id="logged-out-view">
+          <p class="mb-4">Sign in with your Bluesky account to share your status!</p>
+          <button id="login-btn" class="w-full p-2 border border-black hover:bg-black hover:text-white">
+            Sign In
+          </button>
+        </div>
+
+        <div id="logged-in-view" class="hidden">
+          <form id="status-form" class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div id="user-info" class="text-sm"></div>
+              <button id="logout-btn" type="button" class="text-xs px-2 py-1 border border-gray-400 hover:border-black">
+                Log out
+              </button>
+            </div>
+            
+            <div class="grid grid-cols-8 gap-1 mb-4">
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="👍">👍</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="🤯">🤯</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="💙">💙</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="😳">😳</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="😱">😱</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="🙃">🙃</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="😎">😎</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="😇">😇</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="🤓">🤓</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="😆">😆</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="🥳">🥳</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="🤩">🤩</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="🤘">🤘</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="👀">👀</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="🦋">🦋</button>
+              <button type="button" class="status-btn text-xl p-2 border border-gray-300 hover:border-black" data-status="🚀">🚀</button>
+            </div>
+            
+            <div class="flex gap-2">
+              <input type="text" id="status-input" maxlength="1" placeholder="😊" 
+                     class="flex-1 p-2 border border-black focus:outline-none text-center text-lg" />
+              <button type="submit" class="px-4 py-2 border border-black hover:bg-black hover:text-white text-sm">
+                Share
+              </button>
+            </div>
+            
+            <p id="emoji-tip" class="text-xs text-gray-500 text-center"></p>
+          </form>
+        </div>
+      </div>
+
+      <div id="timeline-section">
+        <div id="loading" class="text-center">Loading recent statuses...</div>
+        <div id="status-timeline" class="hidden space-y-1"></div>
+        <div id="no-statuses" class="hidden text-center">
+          <p>No status updates yet. Be the first to share!</p>
+        </div>
+      </div>
+    </main>
+
+    <footer class="text-center text-xs mt-8 text-gray-400">
+      <a href="https://github.com/hzoo/henry.ink/tree/main/statusphere" class="underline">henry.ink/statusphere</a>
+    </footer>
+  </div>
+
+  <script type="module" src="./app.ts"></script>
+</body>
+</html>
