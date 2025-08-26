@@ -35,7 +35,12 @@ const BASE_URL = typeof window !== 'undefined'
   ? `${window.location.protocol}//${window.location.host}` 
   : "http://127.0.0.1:3001";
 const OAUTH_REDIRECT_URI = `${BASE_URL}/callback`;
-const OAUTH_CLIENT_ID = `${BASE_URL}/oauth-client-metadata.json`;
+
+// For localhost, use the special client_id format. For production, use the metadata URL.
+const isLocalhost = BASE_URL.includes('127.0.0.1') || BASE_URL.includes('localhost');
+const OAUTH_CLIENT_ID = isLocalhost
+  ? `http://localhost?redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}&scope=${encodeURIComponent("atproto transition:generic")}`
+  : `${BASE_URL}/oauth-client-metadata.json`;
 
 export function initializeOAuth(): void {
   if (typeof window !== "undefined" && !isOAuthInitialized) {
