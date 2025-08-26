@@ -31,8 +31,11 @@ export interface SessionState {
 let isOAuthInitialized = false;
 let currentSession: SessionState | null = null;
 
-const OAUTH_REDIRECT_URI = "http://127.0.0.1:3001/callback";
-const OAUTH_CLIENT_ID = `http://localhost?redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}&scope=${encodeURIComponent("atproto transition:generic")}`;
+const BASE_URL = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.host}` 
+  : "http://127.0.0.1:3001";
+const OAUTH_REDIRECT_URI = `${BASE_URL}/callback`;
+const OAUTH_CLIENT_ID = `${BASE_URL}/oauth-client-metadata.json`;
 
 export function initializeOAuth(): void {
   if (typeof window !== "undefined" && !isOAuthInitialized) {

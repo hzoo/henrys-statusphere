@@ -1,14 +1,36 @@
 import { serve } from "bun";
 import appPage from "./pages/app.html";
 import profilePage from "./pages/profile.html";
-import oauthMetadata from "../public/oauth-client-metadata.json";
 import { db } from "./db";
 import { ingester } from "./jetstream";
 
+const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:3001";
+
+const oauthMetadata = {
+  "client_id": `${BASE_URL}/oauth-client-metadata.json`,
+  "client_uri": BASE_URL,
+  "redirect_uris": [
+    `${BASE_URL}`,
+    `${BASE_URL}/callback`
+  ],
+  "application_type": "web",
+  "client_name": "Henry's Statusphere",
+  "dpop_bound_access_tokens": true,
+  "grant_types": [
+    "authorization_code",
+    "refresh_token"
+  ],
+  "response_types": [
+    "code"
+  ],
+  "scope": "atproto",
+  "token_endpoint_auth_method": "none"
+};
+
 const server = serve({
-  port: 3001,
-  hostname: "127.0.0.1",
-  development: true,
+  port: process.env.PORT ? parseInt(process.env.PORT) : 3001,
+  hostname: process.env.HOST || "127.0.0.1",
+  development: process.env.NODE_ENV !== 'production',
   
   routes: {
     "/": appPage,
