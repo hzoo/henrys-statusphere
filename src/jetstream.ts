@@ -116,10 +116,8 @@ class JetstreamIngester {
       const did = event.did || commit.repo;
       const uri = `at://${did}/xyz.statusphere.status/${commit.rkey}`;
 
-      console.log(`🗑️ Deleting status from ${did.slice(-8)}...`);
-
       await db.deleteStatus(uri);
-      console.log(`✅ Deleted status from database`);
+      console.log(`✅ Deleted status from ${did.slice(-8)}...`);
     } catch (error) {
       console.error("❌ Failed to delete status:", error);
     }
