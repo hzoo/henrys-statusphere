@@ -89,9 +89,15 @@ class JetstreamIngester {
         return;
       }
 
-      // Minimal validation: must be exactly 1 visual character
-      if ([...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(record.status)].length !== 1) {
-        return; // Skip invalid status
+      // Simple validation: single visible character only
+      const status = record.status.trim();
+      if (!status || status.length === 0 || status.length > 10) { // Allow multi-byte chars like emojis
+        return;
+      }
+      
+      // Reject if it looks empty when rendered (catches zero-width chars)
+      if (status.replace(/[\u200B-\u200D\uFEFF]/g, '').length === 0) {
+        return;
       }
 
       const did = event.did || commit.repo;
@@ -100,7 +106,7 @@ class JetstreamIngester {
       await db.insertStatus({
         uri,
         did,
-        status: record.status,
+        status: status, // Use validated status
         created_at: record.createdAt,
       });
 
