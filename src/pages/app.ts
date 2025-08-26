@@ -51,6 +51,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const existingSession = await checkExistingSession();
   if (existingSession) {
     showLoggedInView();
+  } else {
+    showLoggedOutView();
   }
 });
 
@@ -112,6 +114,7 @@ function showLoggedInView(): void {
   const currentSession = getCurrentSession();
   if (!currentSession) return;
   
+  document.getElementById('auth-section')!.classList.remove('hidden');
   loggedOutView.classList.add('hidden');
   loggedInView.classList.remove('hidden');
   
@@ -131,6 +134,7 @@ function showLoggedInView(): void {
 }
 
 function showLoggedOutView(): void {
+  document.getElementById('auth-section')!.classList.remove('hidden');
   loggedInView.classList.add('hidden');
   loggedOutView.classList.remove('hidden');
 }
