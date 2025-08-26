@@ -19,10 +19,22 @@ const server = serve({
     "/api/statuses": {
       async GET() {
         try {
-          const statuses = await db.getRecentStatuses(20);
+          const statuses = await db.getLatestStatusPerUser(10);
           return Response.json(statuses);
         } catch (error) {
           console.error("Failed to fetch statuses:", error);
+          return Response.json([]);
+        }
+      }
+    },
+
+    "/api/popular": {
+      async GET() {
+        try {
+          const popular = await db.getPopularStatuses(16);
+          return Response.json(popular);
+        } catch (error) {
+          console.error("Failed to fetch popular statuses:", error);
           return Response.json([]);
         }
       }

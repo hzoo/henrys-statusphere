@@ -97,7 +97,6 @@ async function loadUserStatuses(userDid: string): Promise<void> {
             did: userDid,
             status: record.value.status,
             created_at: record.value.createdAt,
-            indexed_at: record.value.createdAt,
           }));
         }
       } catch (pdsError) {

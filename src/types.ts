@@ -11,7 +11,6 @@ export interface StatusRecord {
   did: string;
   status: string;
   created_at: string;
-  indexed_at: string;
 }
 
 /**

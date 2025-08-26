@@ -14,7 +14,7 @@ const userInfo = document.getElementById('user-info') as HTMLElement;
 const loginBtn = document.getElementById('login-btn') as HTMLButtonElement;
 const statusForm = document.getElementById('status-form') as HTMLFormElement;
 const statusInput = document.getElementById('status-input') as HTMLInputElement;
-const statusBtns = document.querySelectorAll('.status-btn') as NodeListOf<HTMLButtonElement>;
+const popularEmojisContainer = document.getElementById('popular-emojis') as HTMLElement;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
 const profileLink = document.getElementById('profile-link') as HTMLAnchorElement;
 const timeline = document.getElementById('status-timeline') as HTMLElement;
@@ -25,6 +25,7 @@ const emojiTip = document.getElementById('emoji-tip') as HTMLElement;
 document.addEventListener('DOMContentLoaded', async () => {
   initializeOAuth();
   await loadTimeline();
+  await loadPopularEmojis();
   
   try {
     const callbackSession = await handleOAuthCallback();
@@ -52,11 +53,7 @@ loginBtn.addEventListener('click', async () => {
   }
 });
 
-statusBtns.forEach((btn: HTMLButtonElement) => {
-  btn.addEventListener('click', () => {
-    statusInput.value = btn.dataset.status || '';
-  });
-});
+// Status button event listeners are now handled dynamically in loadPopularEmojis()
 
 statusForm.addEventListener('submit', async (e: Event) => {
   e.preventDefault();
@@ -85,7 +82,10 @@ statusForm.addEventListener('submit', async (e: Event) => {
     }
     
     statusInput.value = '';
-    setTimeout(() => loadTimeline(), 1000);
+    setTimeout(() => {
+      loadTimeline();
+      loadPopularEmojis();
+    }, 1000);
     
   } catch (error) {
     console.error('Failed to post status:', error);
@@ -97,6 +97,92 @@ logoutBtn.addEventListener('click', async () => {
   await logout();
   showLoggedOutView();
 });
+
+function formatCount(count: number): string {
+  if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+  if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
+  return count.toString();
+}
+
+async function loadPopularEmojis(): Promise<void> {
+  try {
+    const response = await fetch('/api/popular');
+    const popularStatuses = await response.json();
+    
+    // Fallback emojis if no popular ones exist yet
+    const fallbackEmojis = ['😊', '🔥', '💯', '👍', '😍', '🤔', '😎', '🙃', '😂', '💙', '🚀', '✨'];
+    
+    // Clear existing buttons
+    popularEmojisContainer.innerHTML = '';
+    
+    if (popularStatuses.length > 0) {
+      // Show popular emojis with counts - limit to top 12 to avoid clutter
+      const topEmojis = popularStatuses.slice(0, 12);
+      
+      topEmojis.forEach((item: {status: string, count: number}, index: number) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        
+        // Add medal colors for top 3
+        let medalClass = '';
+        if (index === 0) medalClass = 'bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-300 hover:border-yellow-400'; // Gold
+        else if (index === 1) medalClass = 'bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-400 hover:border-gray-500'; // Silver  
+        else if (index === 2) medalClass = 'bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-300 hover:border-orange-400'; // Bronze
+        else medalClass = 'border border-gray-300 hover:border-black hover:bg-gray-50';
+        
+        button.className = `status-btn flex flex-col items-center justify-center text-lg p-2 ${medalClass}`;
+        button.dataset.status = item.status;
+        
+        const emojiSpan = document.createElement('span');
+        emojiSpan.textContent = item.status;
+        emojiSpan.className = 'text-xl leading-none';
+        
+        const countSpan = document.createElement('span');
+        countSpan.textContent = formatCount(item.count);
+        countSpan.className = 'text-xs text-gray-500 leading-none mt-1';
+        
+        button.appendChild(emojiSpan);
+        button.appendChild(countSpan);
+        
+        button.addEventListener('click', () => {
+          statusInput.value = item.status;
+        });
+        
+        popularEmojisContainer.appendChild(button);
+      });
+    } else {
+      // Use fallback emojis without counts
+      fallbackEmojis.forEach((emoji: string) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'status-btn text-xl p-2 border border-gray-300 hover:border-black';
+        button.dataset.status = emoji;
+        button.textContent = emoji;
+        button.addEventListener('click', () => {
+          statusInput.value = emoji;
+        });
+        popularEmojisContainer.appendChild(button);
+      });
+    }
+    
+  } catch (error) {
+    console.error('Failed to load popular emojis:', error);
+    // Use fallback emojis on error
+    const fallbackEmojis = ['😊', '🔥', '💯', '👍', '😍', '🤔', '😎', '🙃', '😂', '💙', '🚀', '✨'];
+    popularEmojisContainer.innerHTML = '';
+    fallbackEmojis.forEach((emoji: string) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'status-btn text-xl p-2 border border-gray-300 hover:border-black';
+      button.dataset.status = emoji;
+      button.textContent = emoji;
+      button.addEventListener('click', () => {
+        statusInput.value = emoji;
+      });
+      popularEmojisContainer.appendChild(button);
+    });
+  }
+}
 
 function showLoggedInView(): void {
   const currentSession = getCurrentSession();
@@ -177,7 +263,7 @@ async function loadTimeline(): Promise<void> {
               </span>
             </div>
             <span class="text-xs text-gray-500 ml-2 flex-shrink-0">
-              ${new Date(status.indexed_at).toLocaleDateString('en-US', { 
+              ${new Date(status.created_at).toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric' 
               })}
