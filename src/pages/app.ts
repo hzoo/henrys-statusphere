@@ -8,6 +8,8 @@ import {
 } from "./oauth.ts";
 import type { StatusRecord, Profile } from "../types";
 
+const authSection = document.getElementById('auth-section') as HTMLElement;
+const authLoadingView = document.getElementById('auth-loading-view') as HTMLElement;
 const loggedOutView = document.getElementById('logged-out-view') as HTMLElement;
 const loggedInView = document.getElementById('logged-in-view') as HTMLElement;
 const userInfo = document.getElementById('user-info') as HTMLElement;
@@ -34,24 +36,34 @@ function escapeHtml(unsafe: string): string {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initializeOAuth();
-  await loadTimeline();
-  await loadPopularEmojis();
+  
+  // Check authentication first to avoid flash
+  let isAuthenticated = false;
   
   try {
     const callbackSession = await handleOAuthCallback();
     if (callbackSession) {
+      isAuthenticated = true;
       showLoggedInView();
-      return;
     }
   } catch (error) {
     alert('Login failed. Please try again.');
   }
   
-  const existingSession = await checkExistingSession();
-  if (existingSession) {
-    showLoggedInView();
-  } else {
-    showLoggedOutView();
+  if (!isAuthenticated) {
+    const existingSession = await checkExistingSession();
+    if (existingSession) {
+      isAuthenticated = true;
+      showLoggedInView();
+    } else {
+      showLoggedOutView();
+    }
+  }
+  
+  // Load content after authentication state is determined
+  await loadTimeline();
+  if (isAuthenticated) {
+    await loadPopularEmojis();
   }
 });
 
@@ -198,14 +210,25 @@ function showLoggedInView(): void {
   const currentSession = getCurrentSession();
   if (!currentSession) return;
   
-  document.getElementById('auth-section')!.classList.remove('hidden');
+  // Hide loading view
+  authLoadingView.classList.add('hidden');
+  
+  // Show logged-in view with animation
   loggedOutView.classList.add('hidden');
   loggedInView.classList.remove('hidden');
+  loggedInView.classList.add('fade-in');
   
-  const displayName = escapeHtml(currentSession.displayName || currentSession.handle.split('.')[0]);
+  // Update auth section state
+  authSection.classList.remove('auth-loading');
+  authSection.classList.add('auth-ready');
+  
+  // Now we know currentSession is not null, so handle is definitely a string
+  const handle = currentSession.handle;
+  const rawDisplayName = currentSession.displayName ? currentSession.displayName : handle.split('.')[0];
+  const displayName = escapeHtml(rawDisplayName as string);
   userInfo.innerHTML = `Hi, <strong>${displayName}</strong>. What's your status today?`;
   
-  profileLink.href = `/profile/${currentSession.handle}`;
+  profileLink.href = `/profile/${handle}`;
   
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const isWindows = navigator.platform.toUpperCase().indexOf('WIN') >= 0;
@@ -220,9 +243,17 @@ function showLoggedInView(): void {
 }
 
 function showLoggedOutView(): void {
-  document.getElementById('auth-section')!.classList.remove('hidden');
+  // Hide loading view
+  authLoadingView.classList.add('hidden');
+  
+  // Show logged-out view with animation
   loggedInView.classList.add('hidden');
   loggedOutView.classList.remove('hidden');
+  loggedOutView.classList.add('fade-in');
+  
+  // Update auth section state
+  authSection.classList.remove('auth-loading');
+  authSection.classList.add('auth-ready');
 }
 
 async function loadTimeline(): Promise<void> {
