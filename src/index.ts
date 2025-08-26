@@ -23,7 +23,7 @@ const oauthMetadata = {
   "response_types": [
     "code"
   ],
-  "scope": "atproto",
+  "scope": "atproto transition:generic",
   "token_endpoint_auth_method": "none"
 };
 
