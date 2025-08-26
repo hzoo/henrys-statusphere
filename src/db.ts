@@ -49,7 +49,7 @@ class StatusDB {
     `;
   }
 
-  async getRecentStatuses(limit = 20): Promise<StatusRecord[]> {
+  async getRecentStatuses(limit = 10): Promise<StatusRecord[]> {
     await this.ensureInitialized();
     return await this.sql`
       SELECT uri, did, status, created_at
@@ -59,7 +59,7 @@ class StatusDB {
     `;
   }
 
-  async getLatestStatusPerUser(limit = 20): Promise<StatusRecord[]> {
+  async getLatestStatusPerUser(limit = 10): Promise<StatusRecord[]> {
     await this.ensureInitialized();
     return await this.sql`
       SELECT uri, did, status, created_at
