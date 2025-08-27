@@ -70,8 +70,8 @@ class JetstreamIngester {
       // Reject if it looks empty when rendered (catches zero-width chars)
       if (status.replace(/[\u200B-\u200D\uFEFF]/g, '').length === 0) return;
       
-      // Count graphemes (visible characters) - allows complex emojis like 👨‍👩‍👧‍👦
-      const graphemeCount = [...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(status)].length;
+      // Count graphemes (visible characters) - allows complex emojis and international characters
+      const graphemeCount = [...new Intl.Segmenter({ granularity: 'grapheme' }).segment(status)].length;
       if (graphemeCount !== 1) return;
 
       const did = event.did || commit.repo;
