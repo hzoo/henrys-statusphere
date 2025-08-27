@@ -100,7 +100,7 @@ statusForm.addEventListener('submit', async (e: Event) => {
     
     statusInput.value = '';
     setTimeout(() => {
-      loadTimeline();
+      loadTimelineForced();
       loadPopularEmojis();
     }, 1000);
     
@@ -261,57 +261,72 @@ async function loadTimeline(): Promise<void> {
   try {
     const response = await fetch('/api/statuses');
     const statuses = await response.json() as StatusRecord[];
-    
-    if (statuses.length === 0) {
-      noStatuses.classList.remove('hidden');
-      timeline.classList.add('hidden');
-    } else {
-      noStatuses.classList.add('hidden');
-      timeline.classList.remove('hidden');
-      
-      const uniqueDids = [...new Set(statuses.map(s => s.did))];
-      const profiles = new Map<string, Profile>();
-      
-      // Fetch all profiles in parallel
-      const profilePromises = uniqueDids.map(async (did) => {
-        const profile = await fetchProfile(did);
-        return profile ? { did, profile } : null;
-      });
-      
-      const profileResults = await Promise.all(profilePromises);
-      profileResults.forEach(result => {
-        if (result) {
-          profiles.set(result.did, result.profile);
-        }
-      });
-      
-      timeline.innerHTML = statuses.map(status => {
-        const profile = profiles.get(status.did);
-        const handle = escapeHtml(profile?.handle || status.did.replace("did:plc:", "").substring(0, 8) + "...");
-        const avatar = profile?.avatar ? escapeHtml(profile.avatar) : '';
-        
-        return `
-          <div class="flex items-start justify-between text-sm">
-            <div class="flex items-center space-x-2">
-              ${avatar ? `<img src="${avatar}" alt="" class="w-4 h-4 rounded-full flex-shrink-0" />` : ''}
-              <span>
-                <a href="https://bsky.app/profile/${escapeHtml(status.did)}" target="_blank" class="underline">${handle}</a> is feeling ${escapeHtml(status.status)} today
-              </span>
-            </div>
-            <span class="text-xs text-gray-500 ml-2 flex-shrink-0">
-              ${new Date(status.created_at).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric' 
-              })}
-            </span>
-          </div>
-        `;
-      }).join('');
-    }
+    await renderTimeline(statuses);
   } catch (error) {
     console.error('Failed to load timeline:', error);
     // Show error in timeline area
     timeline.innerHTML = '<div class="text-center text-red-500">Failed to load timeline</div>';
     timeline.classList.remove('hidden');
+  }
+}
+
+async function loadTimelineForced(): Promise<void> {
+  try {
+    const response = await fetch('/api/statuses', { cache: 'no-cache' });
+    const statuses = await response.json() as StatusRecord[];
+    await renderTimeline(statuses);
+  } catch (error) {
+    console.error('Failed to load timeline:', error);
+    timeline.innerHTML = '<div class="text-center text-red-500">Failed to load timeline</div>';
+    timeline.classList.remove('hidden');
+  }
+}
+
+async function renderTimeline(statuses: StatusRecord[]): Promise<void> {
+  if (statuses.length === 0) {
+    noStatuses.classList.remove('hidden');
+    timeline.classList.add('hidden');
+  } else {
+    noStatuses.classList.add('hidden');
+    timeline.classList.remove('hidden');
+    
+    const uniqueDids = [...new Set(statuses.map(s => s.did))];
+    const profiles = new Map<string, Profile>();
+    
+    // Fetch all profiles in parallel
+    const profilePromises = uniqueDids.map(async (did) => {
+      const profile = await fetchProfile(did);
+      return profile ? { did, profile } : null;
+    });
+    
+    const profileResults = await Promise.all(profilePromises);
+    profileResults.forEach(result => {
+      if (result) {
+        profiles.set(result.did, result.profile);
+      }
+    });
+    
+    timeline.innerHTML = statuses.map(status => {
+      const profile = profiles.get(status.did);
+      const handle = escapeHtml(profile?.handle || status.did.replace("did:plc:", "").substring(0, 8) + "...");
+      const avatar = profile?.avatar ? escapeHtml(profile.avatar) : '';
+      
+      return `
+        <div class="flex items-start justify-between text-sm">
+          <div class="flex items-center space-x-2">
+            ${avatar ? `<img src="${avatar}" alt="" class="w-4 h-4 rounded-full flex-shrink-0" />` : ''}
+            <span>
+              <a href="https://bsky.app/profile/${escapeHtml(status.did)}" target="_blank" class="underline">${handle}</a> is feeling ${escapeHtml(status.status)} today
+            </span>
+          </div>
+          <span class="text-xs text-gray-500 ml-2 flex-shrink-0">
+            ${new Date(status.created_at).toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric' 
+            })}
+          </span>
+        </div>
+      `;
+    }).join('');
   }
 }
