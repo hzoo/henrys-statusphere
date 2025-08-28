@@ -11,6 +11,7 @@ import type { StatusRecord, Profile } from "../types";
 const loggedOutView = document.getElementById('logged-out-view') as HTMLElement;
 const loggedInView = document.getElementById('logged-in-view') as HTMLElement;
 const userInfo = document.getElementById('user-info') as HTMLElement;
+const authMessage = document.getElementById('auth-message') as HTMLElement;
 const loginBtn = document.getElementById('login-btn') as HTMLButtonElement;
 const statusForm = document.getElementById('status-form') as HTMLFormElement;
 const statusInput = document.getElementById('status-input') as HTMLInputElement;
@@ -30,6 +31,25 @@ function escapeHtml(unsafe: string): string {
     .replace(/'/g, "&#039;");
 }
 
+function showAuthMessage(message: string, isError: boolean = false): void {
+  authMessage.textContent = message;
+  authMessage.className = `mb-4 p-3 border text-sm text-center fade-in ${
+    isError 
+      ? 'border-red-400 text-red-700 bg-red-50' 
+      : 'border-blue-400 text-blue-700 bg-blue-50'
+  }`;
+  authMessage.classList.remove('hidden');
+  
+  // Auto-hide after 4 seconds
+  setTimeout(() => {
+    authMessage.classList.add('hidden');
+  }, 4000);
+}
+
+function hideAuthMessage(): void {
+  authMessage.classList.add('hidden');
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   initializeOAuth();
   
@@ -42,8 +62,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       isAuthenticated = true;
       showLoggedInView();
     }
-  } catch (error) {
-    alert('Login failed. Please try again.');
+  } catch (error: any) {
+    // Show user-friendly error message
+    const message = error.message?.includes('cancelled') 
+      ? 'Login was cancelled. You can try again anytime!' 
+      : 'Login failed. Please try again.';
+    showAuthMessage(message, true);
   }
   
   if (!isAuthenticated) {
@@ -66,9 +90,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 loginBtn.addEventListener('click', async () => {
   try {
+    hideAuthMessage(); // Clear any previous messages
     await startLoginProcess('bsky.social');
   } catch (error) {
-    alert('Failed to start login. Please try again.');
+    showAuthMessage('Failed to start login. Please try again.', true);
   }
 });
 
@@ -106,7 +131,7 @@ statusForm.addEventListener('submit', async (e: Event) => {
     
   } catch (error) {
     console.error('Failed to post status:', error);
-    alert('Failed to post status. Please try again.');
+    showAuthMessage('Failed to post status. Please try again.', true);
   }
 });
 
@@ -225,7 +250,8 @@ function showLoggedInView(): void {
   const currentSession = getCurrentSession();
   if (!currentSession) return;
   
-  // Show logged-in view with animation
+  // Hide any auth messages and show logged-in view with animation
+  hideAuthMessage();
   loggedOutView.classList.add('hidden');
   loggedInView.classList.remove('hidden');
   loggedInView.classList.add('fade-in');

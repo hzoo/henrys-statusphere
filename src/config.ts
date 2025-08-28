@@ -17,6 +17,24 @@ export function getBaseUrl(): string {
 }
 
 /**
+ * OAuth scope configuration
+ */
+export const OAUTH_SCOPES = {
+  // Try granular scopes first (new system)
+  // use repo:xyz.statusphere.status?action=create to limit to only creation
+  GRANULAR: "atproto repo:xyz.statusphere.status rpc:app.bsky.actor.getProfile?aud=*",
+  // Fallback to transitional scopes (old system)
+  TRANSITIONAL: "atproto transition:generic"
+} as const;
+
+/**
+ * localStorage keys used by the app
+ */
+export const STORAGE_KEYS = {
+  USER_DID: 'user-did',  // Cleaner than 'statusphere:did'
+} as const;
+
+/**
  * OAuth configuration constants
  */
 export function getOAuthConfig() {
@@ -26,7 +44,7 @@ export function getOAuthConfig() {
   // For localhost, use the special client_id format. For production, use the metadata URL.
   const isLocalhost = BASE_URL.includes('127.0.0.1') || BASE_URL.includes('localhost');
   const OAUTH_CLIENT_ID = isLocalhost
-    ? `http://localhost?redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}&scope=${encodeURIComponent("atproto transition:generic")}`
+    ? `http://localhost?redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}&scope=${encodeURIComponent(OAUTH_SCOPES.GRANULAR)}`
     : `${BASE_URL}/oauth-client-metadata.json`;
 
   return {
@@ -60,7 +78,7 @@ export function getOAuthMetadata() {
     "response_types": [
       "code"
     ],
-    "scope": "atproto transition:generic",
+    "scope": OAUTH_SCOPES.GRANULAR,
     "token_endpoint_auth_method": "none"
   };
 }

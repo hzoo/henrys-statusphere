@@ -9,7 +9,7 @@ import {
 } from "@atcute/oauth-browser-client";
 import { Client } from "@atcute/client";
 import type { SessionState } from "../types";
-import { getOAuthConfig } from "../config";
+import { getOAuthConfig, OAUTH_SCOPES, STORAGE_KEYS } from "../config";
 
 /**
  * OAuth authentication for AT Protocol / Bluesky
@@ -20,6 +20,13 @@ import { getOAuthConfig } from "../config";
  * - Maintain authenticated sessions across browser reloads
  * 
  * The OAuth flow uses PKCE (Proof Key for Code Exchange) for security.
+ * 
+ * localStorage Usage & Security:
+ * - atcute-oauth:* keys: Managed by @atcute library (tokens, nonces, session state)
+ * - user-did: Our app's user identifier (just a DID string, not sensitive)
+ * - localStorage is standard for OAuth SPAs and reasonably secure for this use case
+ * - Tokens expire automatically and can be revoked by user at any time
+ * - Alternative (sessionStorage) would force re-auth on every browser restart
  */
 
 
@@ -39,35 +46,73 @@ export function initializeOAuth(): void {
   }
 }
 export async function checkExistingSession(): Promise<SessionState | null> {
-  const storedDid = localStorage.getItem('statusphere:did');
-  if (storedDid) {
-    try {
-      const session = await getSession(storedDid as `did:${string}:${string}`, { allowStale: false });
-      if (session) {
-        const agent = new OAuthUserAgent(session);
-        const client = new Client({ handler: agent });
-        
-        const { ok, data } = await (client as any).get("app.bsky.actor.getProfile", {
-          params: { actor: session.info.sub },
-        });
-        
-        if (ok) {
-          currentSession = {
-            agent,
-            rpc: client,
-            did: session.info.sub,
-            handle: data.handle,
-            displayName: data.displayName,
-          };
-          return currentSession;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to restore session:', error);
-      localStorage.removeItem('statusphere:did');
+  const storedDid = localStorage.getItem(STORAGE_KEYS.USER_DID);
+  if (!storedDid) return null;
+  
+  try {
+    const session = await getSession(storedDid as `did:${string}:${string}`, { allowStale: false });
+    if (!session) return null;
+    
+    // Validate existing session permissions
+    if (!hasRequiredPermissions(session)) {
+      console.warn('⚠️ Session may have limited permissions');
     }
+    
+    const agent = new OAuthUserAgent(session);
+    const client = new Client({ handler: agent });
+    const profile = await fetchUserProfile(client, session.info.sub);
+    
+    currentSession = {
+      agent,
+      rpc: client,
+      did: session.info.sub,
+      handle: profile.handle,
+      ...(profile.displayName && { displayName: profile.displayName }),
+    };
+    
+    return currentSession;
+  } catch (error) {
+    console.error('Failed to restore session:', error);
+    localStorage.removeItem(STORAGE_KEYS.USER_DID);
+    return null;
   }
-  return null;
+}
+
+/**
+ * Shared helper to fetch user profile with proper error handling
+ */
+async function fetchUserProfile(client: any, did: string): Promise<{ handle: string; displayName?: string }> {
+  try {
+    const { ok, data } = await client.get("app.bsky.actor.getProfile", {
+      params: { actor: did },
+    });
+    
+    if (ok) {
+      return { handle: data.handle, displayName: data.displayName };
+    }
+  } catch (error) {
+    console.warn('Failed to fetch user profile:', error);
+  }
+  
+  // Fallback to DID if profile fetch fails
+  return { handle: did };
+}
+
+/**
+ * Simple scope validation - just check if we have basic permissions
+ */
+function hasRequiredPermissions(session: any): boolean {
+  // Scopes are in session.token.scope, not session.info.scope!
+  const scopes = session.token?.scope || session.info?.scope || '';
+  
+  // Check if we have either granular scopes or transitional scopes
+  const hasRepo = scopes.includes('repo:xyz.statusphere.status') || 
+                  scopes.includes('repo:*') ||
+                  scopes.includes('transition:generic');
+                  
+  const hasAtproto = scopes.includes('atproto');
+  
+  return hasRepo && hasAtproto;
 }
 
 /**
@@ -75,50 +120,74 @@ export async function checkExistingSession(): Promise<SessionState | null> {
  * Extracts authorization code and exchanges it for access tokens
  */
 export async function handleOAuthCallback(): Promise<SessionState | null> {
-  if (window.location.pathname === '/callback') {
-    const params = new URLSearchParams(window.location.search || window.location.hash.slice(1));
+  if (window.location.pathname !== '/callback') return null;
+  
+  const params = new URLSearchParams(window.location.search || window.location.hash.slice(1));
+  
+  try {
+    const session = await finalizeAuthorization(params);
     
-    try {
-      const session = await finalizeAuthorization(params);
-      const agent = new OAuthUserAgent(session);
-      const client = new Client({ handler: agent });
-      
-      const { ok, data } = await (client as any).get("app.bsky.actor.getProfile", {
-        params: { actor: session.info.sub },
-      });
-      
-      currentSession = {
-        agent,
-        rpc: client,
-        did: session.info.sub,
-        handle: ok ? data.handle : session.info.sub,
-        displayName: ok ? data.displayName : undefined,
-      };
-      
-      localStorage.setItem('statusphere:did', currentSession.did);
-      
-      window.history.replaceState({}, document.title, '/');
-      return currentSession;
-    } catch (error) {
-      console.error('OAuth callback failed:', error);
-      window.history.replaceState({}, document.title, '/');
-      throw error;
+    // Validate permissions (just for logging)
+    if (!hasRequiredPermissions(session)) {
+      console.warn('⚠️ Some permissions may be missing');
     }
+    
+    const agent = new OAuthUserAgent(session);
+    const client = new Client({ handler: agent });
+    const profile = await fetchUserProfile(client, session.info.sub);
+    
+    currentSession = {
+      agent,
+      rpc: client,
+      did: session.info.sub,
+      handle: profile.handle,
+      ...(profile.displayName && { displayName: profile.displayName }),
+    };
+    
+    localStorage.setItem(STORAGE_KEYS.USER_DID, currentSession.did);
+    window.history.replaceState({}, document.title, '/');
+    
+    return currentSession;
+  } catch (error: any) {
+    console.error('OAuth callback failed:', error);
+    window.history.replaceState({}, document.title, '/');
+    
+    // Handle user rejection more gracefully
+    if (error.name === 'AuthorizationError' || error.message?.includes('rejected')) {
+      throw new Error('Authentication was cancelled. Please try logging in again.');
+    }
+    
+    throw error;
   }
-  return null;
+}
+
+async function tryAuthWithScope(metadata: any, scope: string): Promise<string> {
+  const authUrl = await createAuthorizationUrl({ metadata, scope });
+  return authUrl.toString();
 }
 
 export async function startLoginProcess(handle: string): Promise<void> {
   try {
     initializeOAuth();
-    
     const { metadata } = await resolveFromService('https://bsky.social');
-    const authUrl = await createAuthorizationUrl({
-      metadata,
-      scope: "atproto transition:generic",
-    });
     
-    window.location.href = authUrl.toString();
+    let authUrl: string;
+    
+    try {
+      // Try granular scopes first
+      authUrl = await tryAuthWithScope(metadata, OAUTH_SCOPES.GRANULAR);
+      console.log('Using granular OAuth scopes');
+    } catch (error: any) {
+      // Fall back to transitional scopes if granular fails
+      if (error.message?.includes('Unsupported scope') || error.message?.includes('invalid_client_metadata')) {
+        console.warn('Granular scopes not supported, using transitional scopes');
+        authUrl = await tryAuthWithScope(metadata, OAUTH_SCOPES.TRANSITIONAL);
+      } else {
+        throw error;
+      }
+    }
+    
+    window.location.href = authUrl;
   } catch (error) {
     console.error('Failed to start login:', error);
     throw error;
@@ -129,7 +198,7 @@ export async function logout(): Promise<void> {
   if (currentSession) {
     try {
       await deleteStoredSession(currentSession.did as `did:${string}:${string}`);
-      localStorage.removeItem('statusphere:did');
+      localStorage.removeItem(STORAGE_KEYS.USER_DID);
       currentSession = null;
     } catch (error) {
       console.error('Logout failed:', error);
