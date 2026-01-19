@@ -9,13 +9,13 @@
     "backfill": "bun run src/backfill.ts"
   },
   "dependencies": {
-    "@atcute/client": "^4.0.3",
-    "@atcute/jetstream": "^1.0.2",
+    "@atcute/client": "^4.2.1",
+    "@atcute/jetstream": "^1.1.2",
     "@atcute/oauth-browser-client": "^1.0.26",
-    "bun-plugin-tailwind": "^0.0.15",
-    "tailwindcss": "^4.1.12"
+    "bun-plugin-tailwind": "^0.1.2",
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.19"
+    "@types/bun": "^1.3.6"
   }
 }
