@@ -342,7 +342,7 @@ async function renderTimeline(statuses: StatusRecord[]): Promise<void> {
           <div class="flex items-center space-x-2">
             ${avatar ? `<img src="${avatar}" alt="" class="w-4 h-4 rounded-full flex-shrink-0" />` : ''}
             <span>
-              <a href="https://bsky.app/profile/${escapeHtml(status.did)}" target="_blank" class="underline">${handle}</a> is feeling ${escapeHtml(status.status)} today
+              <a href="/profile/${escapeHtml(profile?.handle || status.did)}" class="underline">${handle}</a> is feeling ${escapeHtml(status.status)} today
             </span>
           </div>
           <span class="text-xs text-gray-500 ml-2 flex-shrink-0">

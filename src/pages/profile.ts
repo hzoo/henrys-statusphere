@@ -68,10 +68,10 @@ async function fetchProfile(handle: string): Promise<Profile> {
 function showProfile(profile: Profile): void {
   loadingProfile.classList.add('hidden');
   profileInfo.classList.remove('hidden');
-  
-  profileHandle.textContent = `@${profile.handle}`;
+
+  profileHandle.innerHTML = `<a href="https://bsky.app/profile/${escapeHtml(profile.handle)}" target="_blank" class="hover:underline">@${escapeHtml(profile.handle)} ↗</a>`;
   pageTitle.textContent = `${profile.displayName || profile.handle} - Statusphere`;
-  
+
   if (profile.displayName) {
     profileDescription.textContent = profile.displayName;
     profileDescription.classList.remove('hidden');
