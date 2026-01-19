@@ -2,3 +2,4 @@ node_modules
 statusphere.db
 .env
 tap-linux-amd64
+todo.txt
