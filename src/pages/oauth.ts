@@ -5,9 +5,15 @@ import {
   getSession,
   deleteStoredSession,
   OAuthUserAgent,
-  resolveFromService,
 } from "@atcute/oauth-browser-client";
 import { Client } from "@atcute/client";
+import {
+  CompositeDidDocumentResolver,
+  LocalActorResolver,
+  PlcDidDocumentResolver,
+  WebDidDocumentResolver,
+  XrpcHandleResolver,
+} from "@atcute/identity-resolver";
 import type { SessionState } from "../types";
 import { getOAuthConfig, OAUTH_SCOPES, STORAGE_KEYS } from "../config";
 
@@ -31,19 +37,32 @@ import { getOAuthConfig, OAUTH_SCOPES, STORAGE_KEYS } from "../config";
 
 
 let isOAuthInitialized = false;
+let configuredClientId: string | null = null;
 let currentSession: SessionState | null = null;
 
-export function initializeOAuth(): void {
-  if (typeof window !== "undefined" && !isOAuthInitialized) {
-    const { OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI } = getOAuthConfig();
-    configureOAuth({
-      metadata: {
-        client_id: OAUTH_CLIENT_ID,
-        redirect_uri: OAUTH_REDIRECT_URI,
-      },
-    });
-    isOAuthInitialized = true;
-  }
+export function initializeOAuth(scopeOverride?: string): void {
+  if (typeof window === "undefined") return;
+
+  const { OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI } = getOAuthConfig(scopeOverride);
+  if (isOAuthInitialized && configuredClientId === OAUTH_CLIENT_ID) return;
+
+  configureOAuth({
+    metadata: {
+      client_id: OAUTH_CLIENT_ID,
+      redirect_uri: OAUTH_REDIRECT_URI,
+    },
+    identityResolver: new LocalActorResolver({
+      handleResolver: new XrpcHandleResolver({ serviceUrl: "https://public.api.bsky.app" }),
+      didDocumentResolver: new CompositeDidDocumentResolver({
+        methods: {
+          plc: new PlcDidDocumentResolver(),
+          web: new WebDidDocumentResolver(),
+        },
+      }),
+    }),
+  });
+  configuredClientId = OAUTH_CLIENT_ID;
+  isOAuthInitialized = true;
 }
 export async function checkExistingSession(): Promise<SessionState | null> {
   const storedDid = localStorage.getItem(STORAGE_KEYS.USER_DID);
@@ -69,6 +88,7 @@ export async function checkExistingSession(): Promise<SessionState | null> {
       handle: profile.handle,
       ...(profile.displayName && { displayName: profile.displayName }),
     };
+    localStorage.setItem(STORAGE_KEYS.USER_HANDLE, currentSession.handle);
     
     return currentSession;
   } catch (error) {
@@ -125,7 +145,7 @@ export async function handleOAuthCallback(): Promise<SessionState | null> {
   const params = new URLSearchParams(window.location.search || window.location.hash.slice(1));
   
   try {
-    const session = await finalizeAuthorization(params);
+    const { session } = await finalizeAuthorization(params);
     
     // Validate permissions (just for logging)
     if (!hasRequiredPermissions(session)) {
@@ -145,6 +165,7 @@ export async function handleOAuthCallback(): Promise<SessionState | null> {
     };
     
     localStorage.setItem(STORAGE_KEYS.USER_DID, currentSession.did);
+    localStorage.setItem(STORAGE_KEYS.USER_HANDLE, currentSession.handle);
     window.history.replaceState({}, document.title, '/');
     
     return currentSession;
@@ -161,27 +182,30 @@ export async function handleOAuthCallback(): Promise<SessionState | null> {
   }
 }
 
-async function tryAuthWithScope(metadata: any, scope: string): Promise<string> {
-  const authUrl = await createAuthorizationUrl({ metadata, scope });
+async function tryAuthWithScope(scope: string, serviceUrl?: string): Promise<string> {
+  const targetServiceUrl = serviceUrl ?? "https://bsky.social";
+  const authUrl = await createAuthorizationUrl({
+    target: { type: "pds", serviceUrl: targetServiceUrl },
+    scope,
+  });
   return authUrl.toString();
 }
 
-export async function startLoginProcess(handle: string): Promise<void> {
+export async function startLoginProcess(serviceUrl?: string): Promise<void> {
   try {
     initializeOAuth();
-    const { metadata } = await resolveFromService('https://bsky.social');
     
     let authUrl: string;
     
     try {
       // Try granular scopes first
-      authUrl = await tryAuthWithScope(metadata, OAUTH_SCOPES.GRANULAR);
+      authUrl = await tryAuthWithScope(OAUTH_SCOPES.GRANULAR, serviceUrl);
       console.log('Using granular OAuth scopes');
     } catch (error: any) {
       // Fall back to transitional scopes if granular fails
       if (error.message?.includes('Unsupported scope') || error.message?.includes('invalid_client_metadata')) {
         console.warn('Granular scopes not supported, using transitional scopes');
-        authUrl = await tryAuthWithScope(metadata, OAUTH_SCOPES.TRANSITIONAL);
+        authUrl = await tryAuthWithScope(OAUTH_SCOPES.TRANSITIONAL, serviceUrl);
       } else {
         throw error;
       }

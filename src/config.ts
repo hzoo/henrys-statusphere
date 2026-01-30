@@ -24,27 +24,42 @@ export const OAUTH_SCOPES = {
   // use repo:xyz.statusphere.status?action=create to limit to only creation
   GRANULAR: "atproto repo:xyz.statusphere.status rpc:app.bsky.actor.getProfile?aud=*",
   // Fallback to transitional scopes (old system)
-  TRANSITIONAL: "atproto transition:generic"
+  TRANSITIONAL: "atproto transition:generic",
 } as const;
+
+function mergeScopes(...scopes: string[]): string {
+  const parts = scopes
+    .join(" ")
+    .split(/\s+/)
+    .filter(Boolean);
+  return Array.from(new Set(parts)).join(" ");
+}
+
+export const OAUTH_SCOPE_ALL = mergeScopes(
+  OAUTH_SCOPES.GRANULAR,
+  OAUTH_SCOPES.TRANSITIONAL
+);
 
 /**
  * localStorage keys used by the app
  */
 export const STORAGE_KEYS = {
   USER_DID: 'user-did',  // Cleaner than 'statusphere:did'
+  USER_HANDLE: 'user-handle',
 } as const;
 
 /**
  * OAuth configuration constants
  */
-export function getOAuthConfig() {
+export function getOAuthConfig(scopeOverride?: string) {
   const BASE_URL = getBaseUrl();
   const OAUTH_REDIRECT_URI = `${BASE_URL}/callback`;
+  const scope = scopeOverride ?? OAUTH_SCOPE_ALL;
   
   // For localhost, use the special client_id format. For production, use the metadata URL.
   const isLocalhost = BASE_URL.includes('127.0.0.1') || BASE_URL.includes('localhost');
   const OAUTH_CLIENT_ID = isLocalhost
-    ? `http://localhost?redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}&scope=${encodeURIComponent(OAUTH_SCOPES.GRANULAR)}`
+    ? `http://localhost?redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}&scope=${encodeURIComponent(scope)}`
     : `${BASE_URL}/oauth-client-metadata.json`;
 
   return {
@@ -78,7 +93,7 @@ export function getOAuthMetadata() {
     "response_types": [
       "code"
     ],
-    "scope": OAUTH_SCOPES.GRANULAR,
+    "scope": OAUTH_SCOPE_ALL,
     "token_endpoint_auth_method": "none"
   };
 }

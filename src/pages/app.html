@@ -34,9 +34,30 @@
         </div>
         
         <div id="logged-out-view" class="hidden">
-          <button id="login-btn" class="w-full p-2 border border-black hover:bg-black hover:text-white">
-            Sign in with Bluesky
-          </button>
+          <div class="relative">
+            <button id="login-btn" class="w-full p-2 pr-12 border border-black hover:bg-black hover:text-white">
+              Sign in with Bluesky
+            </button>
+            <button
+              id="advanced-btn"
+              type="button"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] underline text-gray-500 hover:text-black whitespace-nowrap"
+            >
+              PDS
+            </button>
+          </div>
+          <div id="advanced-panel" class="hidden mt-3">
+            <input
+              id="pds-input"
+              type="url"
+              placeholder="Custom PDS URL (https://your.pds)"
+              spellcheck="false"
+              class="w-full p-2 border border-gray-300 focus:outline-none text-xs"
+            />
+            <p class="mt-2 text-xs text-gray-400 text-center">
+              Use your provider URL.
+            </p>
+          </div>
           <p class="text-xs text-gray-400 text-center mt-2">
             Scoped to <code class="bg-gray-100 px-1">xyz.statusphere.status</code> only
           </p>

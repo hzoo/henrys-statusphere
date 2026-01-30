@@ -13,6 +13,9 @@ const loggedInView = document.getElementById('logged-in-view') as HTMLElement;
 const userInfo = document.getElementById('user-info') as HTMLElement;
 const authMessage = document.getElementById('auth-message') as HTMLElement;
 const loginBtn = document.getElementById('login-btn') as HTMLButtonElement;
+const advancedBtn = document.getElementById('advanced-btn') as HTMLButtonElement;
+const advancedPanel = document.getElementById('advanced-panel') as HTMLElement;
+const pdsInput = document.getElementById('pds-input') as HTMLInputElement;
 const statusForm = document.getElementById('status-form') as HTMLFormElement;
 const statusInput = document.getElementById('status-input') as HTMLInputElement;
 const popularEmojisContainer = document.getElementById('popular-emojis') as HTMLElement;
@@ -52,6 +55,13 @@ function hideAuthMessage(): void {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initializeOAuth();
+
+  if (advancedBtn && advancedPanel) {
+    advancedBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      advancedPanel.classList.toggle('hidden');
+    });
+  }
   
   // Check authentication first to avoid flash
   let isAuthenticated = false;
@@ -91,7 +101,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 loginBtn.addEventListener('click', async () => {
   try {
     hideAuthMessage(); // Clear any previous messages
-    await startLoginProcess('bsky.social');
+    let pdsUrl: string | undefined;
+    const rawPds = pdsInput?.value?.trim();
+    if (rawPds) {
+      try {
+        const parsed = new URL(rawPds);
+        if (parsed.protocol !== 'https:') {
+          showAuthMessage('PDS must use https://', true);
+          return;
+        }
+        pdsUrl = parsed.origin;
+      } catch {
+        showAuthMessage('Invalid PDS URL.', true);
+        return;
+      }
+    }
+    await startLoginProcess(pdsUrl);
   } catch (error) {
     showAuthMessage('Failed to start login. Please try again.', true);
   }
